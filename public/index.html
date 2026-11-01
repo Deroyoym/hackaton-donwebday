@@ -115,9 +115,25 @@
     .cw-quick { display: flex; gap: 6px; overflow-x: auto; padding: 8px 12px; background: #efeae2; scrollbar-width: none; }
     .cw-quick button { flex: 0 0 auto; background: #fff; color: var(--orange-2); border: 1px solid #fed7aa; border-radius: 999px; font-size: .82rem; padding: 6px 11px; }
     .cw-res { border-top: 1px solid var(--line); padding: 10px 14px; background: var(--card); }
-    .cw-res .tot { font-weight: 800; display: flex; gap: 6px; align-items: center; font-size: .95rem; }
-    .cw-res .tot .mono { color: var(--orange-2); }
-    .cw-res .items { font-size: .82rem; color: var(--muted); }
+    /* Ticket del pedido */
+    .tk-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .tk-tit { display: flex; gap: 6px; align-items: center; font-family: var(--display); font-weight: 800; font-size: .95rem; }
+    .tk-tit .i { color: var(--orange-2); width: 16px; height: 16px; }
+    .tk-n { font-size: .78rem; color: var(--muted); }
+    .tk-items { max-height: 112px; overflow-y: auto; border-top: 1px dashed var(--line); padding-top: 4px; }
+    .tk-row { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; font-size: .88rem; padding: 2px 0; align-items: baseline; }
+    .tk-row .q { font-family: var(--mono); font-weight: 700; color: var(--orange-2); font-size: .82rem; }
+    .tk-row .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tk-row .mono, .tk-sum .mono { font-size: .84rem; }
+    .tk-sum { display: flex; justify-content: space-between; font-size: .84rem; color: var(--muted); border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 4px; }
+    .tk-total { display: flex; justify-content: space-between; align-items: baseline; margin-top: 2px; }
+    .tk-total span { font-weight: 800; font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
+    .tk-total b { font-size: 1.25rem; color: var(--orange-2); }
+    .tk-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .tag-ok, .tag-falta { display: inline-flex; gap: 4px; align-items: center; font-size: .74rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; border: 1px solid; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tag-ok .i, .tag-falta .i { width: 12px; height: 12px; }
+    .tag-ok { background: var(--green-bg); color: var(--green-2); border-color: var(--green-line); }
+    .tag-falta { background: var(--orange-bg); color: var(--orange-2); border-color: #fed7aa; }
     .cw-res button { width: 100%; margin-top: 8px; }
     .cw-res button.pending { background: var(--soft); color: var(--muted); border: 1px dashed var(--line); box-shadow: none; font-weight: 600; cursor: pointer; }
     .cw-res button.pending:hover { color: var(--text); }
@@ -146,7 +162,9 @@
       .msg.sys { background: #0d2a1b; border-color: #166534; color: #86efac; }
       .cw-quick button { background: #121b2e; border-color: #7c2d12; color: #fb923c; }
       .menu-list li { border-color: #334155; }
-      .cw-res .tot .mono, .prod .mono { color: #fb923c; }
+      .tk-total b, .tk-row .q, .prod .mono { color: #fb923c; }
+      .tag-ok { color: #86efac; }
+      .tag-falta { color: #fdba74; border-color: #7c2d12; }
       .cta-band { padding: 24px; }
     }
   </style>
@@ -259,9 +277,11 @@
       <button data-q="¿Cómo puedo pagar?" type="button"><span data-icon="card"></span>Pagos</button>
     </div>
     <div class="cw-res hidden" id="resumen">
-      <div class="tot" id="rTotal"></div>
-      <div class="items" id="rItems"></div>
-      <div class="items" id="rFalta"></div>
+      <div class="tk-head"><span class="tk-tit"><span data-icon="list"></span>Tu pedido</span><span class="tk-n" id="rCant"></span></div>
+      <div class="tk-items" id="rItems"></div>
+      <div class="tk-sum" id="rEnvio"></div>
+      <div class="tk-total"><span>Total</span><b class="mono" id="rTotal"></b></div>
+      <div class="tk-tags" id="rTags"></div>
       <button id="btnConfirmar" class="pending" type="button"><span data-icon="pencil"></span>Completá tus datos para confirmar</button>
     </div>
     <form class="cw-form" id="form" autocomplete="off">
@@ -345,9 +365,26 @@
       const p = estado?.pedido;
       if (!p || !p.items.length) { $('#resumen').classList.add('hidden'); return; }
       $('#resumen').classList.remove('hidden');
-      $('#rTotal').innerHTML = icon('list') + 'Tu pedido · <span class="mono">' + money(p.total) + '</span>' + (p.envio ? ' <span class="muted" style="font-weight:500">(envío incl.)</span>' : '');
-      $('#rItems').textContent = p.items.map((i) => `${i.cantidad} × ${i.producto}`).join(', ');
-      $('#rFalta').textContent = estado.listo ? '' : 'Falta: ' + estado.faltantes.join(', ');
+      const unidades = p.items.reduce((s, i) => s + i.cantidad, 0);
+      $('#rCant').textContent = unidades + (unidades === 1 ? ' producto' : ' productos');
+      $('#rItems').innerHTML = p.items.map((i) => `
+        <div class="tk-row"><span class="q">${i.cantidad}x</span><span class="nm">${esc(i.producto)}</span><span class="mono">${money(i.cantidad * i.precio_unit)}</span></div>`).join('');
+      const tipo = p.entrega.tipo;
+      $('#rEnvio').innerHTML = `<span>${tipo === 'envio' ? 'Envío' : tipo === 'retiro' ? 'Retiro en el local' : 'Entrega'}</span><span class="mono">${tipo === 'envio' ? money(p.envio) : tipo === 'retiro' ? 'Sin cargo' : 'A definir'}</span>`;
+      $('#rTotal').textContent = money(p.total);
+
+      // Etiquetas: verde lo que ya tenemos, naranja lo que falta.
+      const tags = [];
+      const ok = (ic, txt) => tags.push(`<span class="tag-ok">${icon(ic)}${esc(txt)}</span>`);
+      const falta = (txt) => tags.push(`<span class="tag-falta">${icon('alert')}Falta ${esc(txt)}</span>`);
+      p.cliente.nombre ? ok('user', p.cliente.nombre) : falta('nombre');
+      p.cliente.telefono ? ok('phone', p.cliente.telefono) : falta('teléfono');
+      if (!tipo) falta('retiro o envío');
+      else if (tipo === 'retiro') ok('store', 'Retira');
+      else p.entrega.direccion ? ok('pin', p.entrega.direccion) : falta('dirección');
+      if (p.entrega.horario) ok('clock', p.entrega.horario);
+      if (p.pago) ok('card', p.pago);
+      $('#rTags').innerHTML = tags.join('');
       pintarConfirmar();
     }
 
