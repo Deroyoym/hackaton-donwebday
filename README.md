@@ -12,7 +12,7 @@ Un negocio local, como una pizzería de barrio, atiende consultas y pedidos a ma
 
 1. **El cliente pide solo.** Entra a la landing del local, abre el chat y escribe como en WhatsApp ("2 muzzas y una coca, envío a Corrientes 1234"). La IA arma el pedido, le muestra un ticket con precios y total y le pide los datos que faltan. Si el local está cerrado, deja el pedido programado para la apertura.
 2. **El local lo recibe ordenado.** El pedido confirmado cae en el panel de comandas con un sonido. Los pedidos que siguen llegando por WhatsApp o teléfono también se cargan rápido: se sube una captura del chat o se dicta la llamada, y la IA los convierte en comanda con una respuesta sugerida para mandar por WhatsApp.
-3. **El cliente lo sigue en vivo.** El local cambia el estado (preparando, listo, entregado) y el cliente lo ve actualizarse solo en el chat.
+3. **El cliente lo sigue en vivo.** El local cambia el estado (preparando, listo, entregado) y el cliente lo ve actualizarse solo en el chat. Desde otro dispositivo, alcanza con escribir "pedido #2" en el chat.
 
 Pantallas: landing pública con el chat (`/`), login del local (`/login.html`, en la demo el usuario es `admin` y la contraseña `donpepe`), nuevo pedido (`/admin/`), comandas (`/admin/panel.html`) y menú y horarios (`/admin/config.html`).
 
