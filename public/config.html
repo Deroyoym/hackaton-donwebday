@@ -23,6 +23,9 @@
         <div><label>Nombre del negocio</label><input id="negocio"></div>
         <div><label>Costo de envío</label><input id="envio" type="number" min="0"></div>
       </div>
+      <label>Horarios</label><input id="horarios" placeholder="Ej: Martes a domingo de 19:30 a 00:00">
+      <label>Otros datos para el asistente (zonas de envío, demoras, formas de pago, aclaraciones)</label>
+      <textarea id="info" style="min-height:90px"></textarea>
     </section>
     <section class="card">
       <h2>Menú</h2>
@@ -68,7 +71,7 @@
     });
     $('#btnSave').addEventListener('click', async () => {
       try {
-        const cfg = await api('/api/config', { method: 'PUT', body: { negocio: $('#negocio').value, envio: $('#envio').value, menu } });
+        const cfg = await api('/api/config', { method: 'PUT', body: { negocio: $('#negocio').value, envio: $('#envio').value, horarios: $('#horarios').value, info: $('#info').value, menu } });
         menu = cfg.menu;
         render();
         $('#negocioH').textContent = '· ' + cfg.negocio;
@@ -79,6 +82,8 @@
       $('#negocio').value = cfg.negocio;
       $('#negocioH').textContent = '· ' + cfg.negocio;
       $('#envio').value = cfg.envio;
+      $('#horarios').value = cfg.horarios || '';
+      $('#info').value = cfg.info || '';
       menu = cfg.menu;
       render();
     }).catch((e) => msg(e.message, false));

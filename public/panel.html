@@ -16,6 +16,20 @@
     </nav>
   </header>
   <main>
+    <section class="card" id="linkCard">
+      <div class="row" style="align-items:flex-start;flex-wrap:nowrap">
+        <img id="qr" alt="QR del chat de pedidos" width="96" height="96" style="border-radius:8px;flex:0 0 auto">
+        <div style="min-width:0">
+          <h2 style="margin-bottom:4px">🤖 Tus clientes piden solos</h2>
+          <div class="muted">Poné este link en tu respuesta automática de WhatsApp, en Instagram o imprimí el QR. Los pedidos caen acá solos.</div>
+          <div class="row" style="margin-top:8px">
+            <button id="btnCopiarLink" class="sec small">Copiar link</button>
+            <a id="btnCompartir" class="btn sec small" style="padding:6px 10px;font-size:.85rem" target="_blank" rel="noopener">Compartir por WhatsApp</a>
+            <a href="/pedir.html" target="_blank" class="btn small" style="padding:6px 10px;font-size:.85rem">Probar chat ↗</a>
+          </div>
+        </div>
+      </div>
+    </section>
     <div class="stats">
       <div class="stat"><b id="sPend">0</b><span>Pendientes</span></div>
       <div class="stat"><b id="sCant">0</b><span>Pedidos hoy</span></div>
@@ -35,12 +49,43 @@
   <script>
     const SIGUIENTE = { nuevo: 'preparando', preparando: 'listo', listo: 'entregado' };
     const LABEL = { preparando: 'Empezar a preparar', listo: 'Marcar listo', entregado: 'Entregado' };
+    const ORIGEN = { chat: '🤖 Chat web', captura: '📷 Captura', manual: '✍️ Manual' };
     let pedidos = [];
+    let ultimoId = null;
+
+    const linkClientes = location.origin + '/pedir.html';
+    $('#qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=192x192&margin=6&data=' + encodeURIComponent(linkClientes);
+    $('#qr').onerror = () => $('#qr').classList.add('hidden');
+    $('#btnCopiarLink').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(linkClientes); } catch { prompt('Copiá el link:', linkClientes); }
+      $('#btnCopiarLink').textContent = '¡Copiado!';
+      setTimeout(() => ($('#btnCopiarLink').textContent = 'Copiar link'), 1500);
+    });
+
+    // Aviso sonoro + título cuando entra un pedido nuevo
+    function avisar(n) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        [0, 0.18].forEach((t) => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+          g.gain.setValueAtTime(0.25, ctx.currentTime + t);
+          g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.15);
+          o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.16);
+        });
+      } catch {}
+      document.title = `(${n}) ¡Pedido nuevo!`;
+      setTimeout(() => (document.title = 'Panel de pedidos'), 6000);
+    }
 
     async function cargar() {
       try {
         const [cfg, ps] = await Promise.all([api('/api/config'), api('/api/pedidos')]);
         $('#negocio').textContent = '· ' + cfg.negocio;
+        $('#btnCompartir').href = 'https://wa.me/?text=' + encodeURIComponent(`¡Hola! Ahora podés hacer tu pedido en ${cfg.negocio} acá, te responde al toque 👉 ${linkClientes}`);
+        const maxId = ps.reduce((m, p) => Math.max(m, p.id), 0);
+        if (ultimoId !== null && maxId > ultimoId) avisar(ps.filter((p) => p.id > ultimoId).length);
+        ultimoId = maxId;
         pedidos = ps;
         $('#error').classList.add('hidden');
         render();
@@ -73,7 +118,7 @@
             <strong>#${p.id} · ${esc(p.cliente.nombre || 'Sin nombre')}</strong>
             <span class="badge">${p.estado}</span>
           </div>
-          <div class="muted">${hora} · ${entrega}${p.entrega.horario ? ' · ' + esc(p.entrega.horario) : ''}${p.pago ? ' · ' + esc(p.pago) : ''}</div>
+          <div class="muted">${ORIGEN[p.origen] || ORIGEN.manual} · ${hora} · ${entrega}${p.entrega.horario ? ' · ' + esc(p.entrega.horario) : ''}${p.pago ? ' · ' + esc(p.pago) : ''}</div>
           <ul class="items">${p.items.map((i) => `<li>${i.cantidad} × ${esc(i.producto)}${i.nota ? ` <span class="muted">(${esc(i.nota)})</span>` : ''}</li>`).join('')}</ul>
           ${p.faltantes.length ? `<div class="chips">${p.faltantes.map((f) => `<span class="chip warn">${esc(f)}</span>`).join('')}</div>` : ''}
           <div class="row" style="justify-content:space-between">
@@ -103,7 +148,7 @@
     });
     $('#filtro').addEventListener('change', render);
     cargar();
-    setInterval(cargar, 10000);
+    setInterval(cargar, 5000);
   </script>
 </body>
 </html>

@@ -33,7 +33,86 @@ document.querySelectorAll('[data-ej]').forEach((b) => b.addEventListener('click'
   $('#texto').focus();
 }));
 
+// ---------- Captura de pantalla ----------
+let imagen = ''; // data URL comprimida
+
+function comprimirImagen(file, max = 1600) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k);
+      c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen.')); };
+    img.src = url;
+  });
+}
+
+function setCaptura(dataUrl) {
+  imagen = dataUrl;
+  $('#capturaImg').src = dataUrl || '';
+  $('#captura').classList.toggle('hidden', !dataUrl);
+  $('#fileCaptura').value = '';
+}
+
+$('#fileCaptura').addEventListener('change', async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    setCaptura(await comprimirImagen(f));
+    showError('');
+    $('#btnProcesar').click(); // un toque: subís la captura y ya se procesa
+  } catch (err) { showError(err.message); }
+});
+$('#btnQuitarCaptura').addEventListener('click', () => setCaptura(''));
+
+// Pegar una captura con Ctrl+V (útil en la compu con WhatsApp Web)
+document.addEventListener('paste', async (e) => {
+  const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'));
+  if (!item) return;
+  e.preventDefault();
+  try { setCaptura(await comprimirImagen(item.getAsFile())); } catch (err) { showError(err.message); }
+});
+
+// ---------- Dictado por voz (llamadas) ----------
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null;
+if (SR) {
+  $('#btnDictar').classList.remove('hidden');
+  $('#btnDictar').addEventListener('click', () => {
+    if (rec) { rec.stop(); return; }
+    rec = new SR();
+    rec.lang = 'es-AR';
+    rec.continuous = true;
+    rec.interimResults = false;
+    const base = $('#texto').value;
+    let dicho = '';
+    rec.onresult = (ev) => {
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        if (ev.results[i].isFinal) dicho += ev.results[i][0].transcript + ' ';
+      }
+      $('#texto').value = (base ? base + '\n' : '') + dicho.trim();
+    };
+    rec.onerror = (ev) => showError(ev.error === 'not-allowed' ? 'Permití el uso del micrófono para dictar.' : 'No se pudo usar el micrófono (' + ev.error + ').');
+    rec.onend = () => {
+      rec = null;
+      $('#btnDictar').textContent = '🎤 Dictar llamada';
+      $('#btnDictar').classList.add('sec');
+    };
+    rec.start();
+    $('#btnDictar').textContent = '⏹ Terminar dictado';
+    $('#btnDictar').classList.remove('sec');
+  });
+}
+
 $('#btnLimpiar').addEventListener('click', () => {
+  setCaptura('');
   $('#texto').value = '';
   $('#resultado').classList.add('hidden');
   showError('');
@@ -41,14 +120,16 @@ $('#btnLimpiar').addEventListener('click', () => {
 
 $('#btnProcesar').addEventListener('click', async () => {
   const texto = $('#texto').value.trim();
-  if (!texto) return showError('Pegá primero el mensaje del cliente.');
+  if (!texto && !imagen) return showError('Subí una captura, dictá o pegá el mensaje del cliente.');
+  if (rec) rec.stop();
   showError('');
   const btn = $('#btnProcesar');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>Leyendo el pedido…';
+  btn.innerHTML = `<span class="spinner"></span>${imagen ? 'Leyendo la captura…' : 'Leyendo el pedido…'}`;
   try {
-    pedido = await api('/api/procesar', { method: 'POST', body: { texto } });
-    pedido.texto_original = texto;
+    pedido = await api('/api/procesar', { method: 'POST', body: { texto, imagen } });
+    pedido.texto_original = texto || '(captura de pantalla)';
+    pedido.origen = imagen ? 'captura' : 'manual';
     render();
     $('#resultado').classList.remove('hidden');
     $('#guardado').classList.add('hidden');
@@ -153,6 +234,7 @@ $('#btnGuardar').addEventListener('click', async () => {
         entrega: { tipo: $('#eTipo').value, direccion: $('#eDir').value, horario: $('#eHorario').value },
         pago: $('#pago').value,
         faltantes: pedido.faltantes,
+        origen: pedido.origen,
         texto_original: pedido.texto_original
       }
     });

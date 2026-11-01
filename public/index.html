@@ -13,12 +13,25 @@
       <a href="/" class="active">Nuevo pedido</a>
       <a href="/panel.html">Panel</a>
       <a href="/config.html">Menú</a>
+      <a href="/pedir.html" target="_blank">Chat clientes ↗</a>
     </nav>
   </header>
   <main>
     <section class="card">
-      <h2>1. Pegá el chat de WhatsApp o anotá la llamada</h2>
-      <p class="muted">La IA lo convierte en un pedido con total, detecta qué falta preguntar y te arma la respuesta.</p>
+      <h2>1. Cargá el pedido como te quede más cómodo</h2>
+      <p class="muted">Subí una captura del chat, dictalo mientras atendés el teléfono o pegá el texto. La IA arma el pedido con total, detecta qué falta preguntar y te escribe la respuesta.</p>
+      <div class="row" style="margin-bottom:10px">
+        <label class="btn" style="margin:0;color:#fff;font-size:1rem">📷 Subir captura de WhatsApp
+          <input id="fileCaptura" type="file" accept="image/*" class="hidden">
+        </label>
+        <button id="btnDictar" class="sec hidden">🎤 Dictar llamada</button>
+      </div>
+      <div id="captura" class="hidden" style="margin-bottom:10px">
+        <div class="row">
+          <img id="capturaImg" alt="Captura" style="max-height:140px;border-radius:8px;border:1px solid var(--line)">
+          <button id="btnQuitarCaptura" class="sec small">Quitar captura</button>
+        </div>
+      </div>
       <div class="examples">
         <span class="muted">Ejemplos:</span>
         <button class="sec" data-ej="0">WhatsApp desordenado</button>

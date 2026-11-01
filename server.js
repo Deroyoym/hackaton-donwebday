@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-app.use(express.json({ limit: '200kb' }));
+app.use(express.json({ limit: '8mb' })); // margen para capturas de pantalla en base64
 app.use(express.static(path.join(__dirname, 'public')));
 
 const PORT = process.env.PORT || 3000;
@@ -19,6 +19,8 @@ const DEFAULT_DATA = {
     negocio: 'Pizzería Don Pepe',
     telefono: '',
     envio: 1500,
+    horarios: 'Martes a domingo de 19:30 a 00:00. Lunes cerrado.',
+    info: 'Envíos en un radio de 30 cuadras, demoran entre 30 y 45 minutos. Aceptamos efectivo, transferencia y Mercado Pago. No tenemos opciones sin TACC.',
     menu: [
       { producto: 'Pizza muzzarella', precio: 9000 },
       { producto: 'Pizza napolitana', precio: 10500 },
@@ -61,7 +63,7 @@ class IAError extends Error {
   constructor(msg, status = 502) { super(msg); this.status = status; }
 }
 
-async function callIA(messages) {
+async function callIA(messages, parseRetry = false) {
   if (!OPENAI_API_KEY) throw new IAError('Falta configurar OPENAI_API_KEY en el servidor.', 500);
   const body = { model: OPENAI_MODEL, messages, temperature: 0.2 };
   if (OPENAI_BASE_URL.includes('api.openai.com')) body.response_format = { type: 'json_object' };
@@ -96,7 +98,14 @@ async function callIA(messages) {
     }
     const json = await res.json();
     const content = json?.choices?.[0]?.message?.content || '';
-    return parseJSON(content);
+    try {
+      return parseJSON(content);
+    } catch (e) {
+      // Si la IA no respondió en JSON, reintentamos una vez antes de mostrar error.
+      console.error('Respuesta no JSON de la IA:', content.slice(0, 300));
+      if (!parseRetry) return callIA(messages, true);
+      throw e;
+    }
   }
 }
 
@@ -170,8 +179,70 @@ function normalizarPedido(raw, config) {
     respuesta_sugerida: str(raw?.respuesta_sugerida)
   };
   calcularTotales(pedido, config);
-  pedido.respuesta_sugerida = pedido.respuesta_sugerida.replace(/(?:\$\s?)?\{\s*TOTAL\s*\}/gi, () => '$' + pedido.total.toLocaleString('es-AR'));
+  pedido.respuesta_sugerida = ponerTotal(pedido.respuesta_sugerida, pedido.total);
   return pedido;
+}
+
+// La IA escribe {TOTAL} y acá ponemos el monto real calculado con el menú.
+function ponerTotal(texto, total) {
+  return str(texto).replace(/(?:\$\s?)?\{\s*TOTAL\s*\}/gi, () => '$' + Number(total || 0).toLocaleString('es-AR'));
+}
+
+// Qué datos faltan para poder cerrar un pedido del chat (lo decide el server, no la IA).
+function faltantesChat(p) {
+  const f = [];
+  if (!p.items.length) f.push('productos');
+  if (!p.cliente.nombre) f.push('nombre');
+  if (!p.cliente.telefono) f.push('teléfono');
+  if (!p.entrega.tipo) f.push('retiro o envío');
+  if (p.entrega.tipo === 'envio' && !p.entrega.direccion) f.push('dirección');
+  return f;
+}
+
+function buildChatPrompt(config, pedidoActual) {
+  const menu = config.menu.map((m) => `- ${m.producto}: $${m.precio}`).join('\n');
+  const ahora = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', weekday: 'long', hour: '2-digit', minute: '2-digit' });
+  const estado = pedidoActual
+    ? JSON.stringify({ cliente: pedidoActual.cliente, items: pedidoActual.items.map((i) => ({ producto: i.producto, cantidad: i.cantidad, nota: i.nota })), entrega: pedidoActual.entrega, pago: pedidoActual.pago })
+    : 'vacío (todavía no pidió nada)';
+  return `Sos el asistente virtual de "${config.negocio}", un negocio local de Argentina. Atendés a los clientes por chat las 24 hs, como lo haría el mejor empleado del local.
+
+AHORA ES: ${ahora} (hora de Argentina).
+
+PEDIDO ACTUAL (lo que ya se anotó; mantenelo y actualizalo con lo nuevo que diga el cliente):
+${estado}
+
+INFORMACIÓN DEL NEGOCIO (copiá los datos tal cual, no los cambies):
+- Horarios: ${config.horarios || 'no informado'}
+- Costo de envío: $${config.envio}
+- Otros datos: ${config.info || 'sin datos extra'}
+
+MENÚ (usá EXACTAMENTE estos nombres):
+${menu}
+
+Reglas:
+- Respondé corto (1 a 3 oraciones), cálido, en español rioplatense. Algún emoji está bien.
+- Usá SOLO la información de arriba. Si te preguntan algo que no está, decí que lo consultás con el local. Nunca inventes productos, precios ni promociones.
+- Si piden algo que no está en el menú, decilo y sugerí lo más parecido.
+- Ayudá a armar el pedido. En "pedido" devolvé SIEMPRE el estado ACTUAL y COMPLETO del pedido, acumulando todo lo de la conversación (si el cliente cambia algo, actualizalo).
+- Para cerrar el pedido hacen falta: productos, nombre, teléfono, retiro o envío y, si es envío, dirección. Preguntá la forma de pago pero no es obligatoria. Pedí los datos de a uno o dos por mensaje, no todos juntos.
+- Si el cliente duda, podés sugerir UN complemento (bebida, faina, empanadas) sin insistir.
+- Cuando ya estén todos los datos, resumí el pedido, decí el total escribiendo literalmente {TOTAL} y pedile que toque el botón "Confirmar pedido".
+- NUNCA digas que el pedido está confirmado, en preparación o en camino: eso pasa recién cuando el cliente toca el botón.
+- Cuando el cliente te dé nombre, teléfono, dirección o forma de pago, guardalos en "pedido" en ese mismo mensaje.
+- No escribas el total con números: usá siempre {TOTAL}. Los precios unitarios del menú sí los podés decir.
+
+Respondé SOLO con este JSON:
+{
+  "respuesta": "mensaje para el cliente",
+  "pedido": {
+    "cliente": { "nombre": "", "telefono": "" },
+    "items": [ { "producto": "nombre exacto del menú", "cantidad": 1, "nota": "" } ],
+    "no_reconocidos": [],
+    "entrega": { "tipo": "envio" | "retiro" | "", "direccion": "", "horario": "" },
+    "pago": ""
+  }
+}`;
 }
 
 function calcularTotales(p, config) {
@@ -194,6 +265,8 @@ app.put('/api/config', (req, res) => {
     negocio: str(b.negocio) || 'Mi negocio',
     telefono: str(b.telefono),
     envio: Math.max(0, Number(b.envio) || 0),
+    horarios: str(b.horarios).slice(0, 500),
+    info: str(b.info).slice(0, 2000),
     menu
   };
   saveData();
@@ -202,16 +275,65 @@ app.put('/api/config', (req, res) => {
 
 app.post('/api/procesar', async (req, res) => {
   const texto = str(req.body?.texto);
-  if (!texto) return res.status(400).json({ error: 'Pegá el mensaje del cliente.' });
+  const imagen = str(req.body?.imagen);
+  if (!texto && !imagen) return res.status(400).json({ error: 'Pegá el mensaje del cliente o subí una captura.' });
   if (texto.length > 8000) return res.status(400).json({ error: 'El texto es muy largo (máx. 8000 caracteres).' });
+  if (imagen && (!/^data:image\/(png|jpe?g|webp);base64,/.test(imagen) || imagen.length > 7_000_000)) {
+    return res.status(400).json({ error: 'La imagen no es válida o es muy pesada.' });
+  }
+  let userContent = `Mensaje(s) del cliente:\n"""\n${texto}\n"""`;
+  if (imagen) {
+    userContent = [
+      { type: 'text', text: 'Esta es una captura de pantalla de un chat de WhatsApp con un cliente. Los mensajes del negocio suelen estar a la derecha (verde) y los del cliente a la izquierda. Leé TODO el chat y armá el pedido del cliente.' + (texto ? `\nNotas extra del negocio: ${texto}` : '') },
+      { type: 'image_url', image_url: { url: imagen } }
+    ];
+  }
   try {
     const raw = await callIA([
       { role: 'system', content: buildPrompt(data.config) },
-      { role: 'user', content: `Mensaje(s) del cliente:\n"""\n${texto}\n"""` }
+      { role: 'user', content: userContent }
     ]);
     res.json(normalizarPedido(raw, data.config));
   } catch (e) {
     console.error('procesar:', e.message);
+    res.status(e.status || 500).json({ error: e.message || 'Error inesperado.' });
+  }
+});
+
+// Chat de autoatención para clientes: recibe la conversación y devuelve respuesta + estado del pedido.
+app.post('/api/chat', async (req, res) => {
+  const mensajes = (Array.isArray(req.body?.mensajes) ? req.body.mensajes : [])
+    .filter((m) => ['user', 'assistant'].includes(m?.role) && str(m?.content))
+    .slice(-20)
+    .map((m) => ({ role: m.role, content: str(m.content).slice(0, 2000) }));
+  if (!mensajes.length || mensajes[mensajes.length - 1].role !== 'user') {
+    return res.status(400).json({ error: 'Escribí un mensaje.' });
+  }
+  // Estado del pedido que tenía el cliente (lo manda el navegador), validado contra el menú.
+  const previo = req.body?.pedido ? normalizarPedido(req.body.pedido, data.config) : null;
+  // El recordatorio de formato va dentro del último mensaje: los modelos chicos lo respetan mejor.
+  const ult = mensajes[mensajes.length - 1];
+  ult.content += '\n\n[Respondé SOLO con el JSON {"respuesta": "...", "pedido": {...}} con el pedido completo y actualizado.]';
+  try {
+    const raw = await callIA([{ role: 'system', content: buildChatPrompt(data.config, previo) }, ...mensajes]);
+    const pedido = normalizarPedido(raw?.pedido || {}, data.config);
+    // Si la IA se "olvida" de datos que ya teníamos, los conservamos.
+    if (previo) {
+      if (!pedido.items.length && previo.items.length) pedido.items = previo.items;
+      for (const k of ['nombre', 'telefono']) pedido.cliente[k] ||= previo.cliente[k];
+      for (const k of ['tipo', 'direccion', 'horario']) pedido.entrega[k] ||= previo.entrega[k];
+      pedido.pago ||= previo.pago;
+      calcularTotales(pedido, data.config);
+    }
+    const faltantes = faltantesChat(pedido);
+    const listo = faltantes.length === 0;
+    let respuesta = ponerTotal(raw?.respuesta, pedido.total) || 'Perdón, no te entendí bien. ¿Me lo repetís?';
+    if (listo && !/confirmar/i.test(respuesta)) {
+      respuesta += `\n\n👉 Total ${'$' + pedido.total.toLocaleString('es-AR')}. Tocá "Confirmar pedido" para enviarlo al local.`;
+    }
+    res.json({ respuesta, pedido, faltantes, listo });
+  } catch (e) {
+    console.error('chat:', e.message);
     res.status(e.status || 500).json({ error: e.message || 'Error inesperado.' });
   }
 });
@@ -229,6 +351,7 @@ app.post('/api/pedidos', (req, res) => {
     id: data.nextId++,
     creado: new Date().toISOString(),
     estado: 'nuevo',
+    origen: ['chat', 'captura', 'manual'].includes(b.origen) ? b.origen : 'manual',
     cliente: { nombre: str(b?.cliente?.nombre), telefono: str(b?.cliente?.telefono) },
     items,
     entrega: { tipo, direccion: str(b?.entrega?.direccion), horario: str(b?.entrega?.horario) },
