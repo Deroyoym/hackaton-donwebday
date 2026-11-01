@@ -2,156 +2,416 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
   <meta name="theme-color" content="#0f172a">
-  <title>Pedido Express</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="description" content="Hacé tu pedido online: te responde al instante, las 24 hs.">
+  <title>Hacé tu pedido</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    body { padding-bottom: 0 !important; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
+
+    /* Nav */
+    .l-nav { background: var(--navy); color: #fff; position: sticky; top: 0; z-index: 20; }
+    .l-nav .wrap { display: flex; align-items: center; gap: 18px; height: 68px; }
+    .l-nav .links { display: flex; gap: 4px; margin-left: auto; }
+    .l-nav .links a { color: #cbd5e1; text-decoration: none; padding: 8px 12px; border-radius: 10px; font-weight: 600; font-size: .93rem; }
+    .l-nav .links a:hover { color: #fff; background: rgba(255, 255, 255, .06); }
+    .l-nav .local { color: #94a3b8; font-size: .85rem; text-decoration: none; display: flex; gap: 6px; align-items: center; }
+    .l-nav .local:hover { color: #fff; }
+    .l-nav .local .i { width: 15px; height: 15px; }
+
+    /* Hero */
+    .hero { background: radial-gradient(900px 500px at 85% 0%, #1e293b 0%, var(--navy) 60%); color: #fff; padding: 64px 0 72px; }
+    .hero .wrap { display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; }
+    .hero .pill-live { display: inline-flex; gap: 8px; align-items: center; font-size: .85rem; font-weight: 700; color: #bbf7d0; background: rgba(34, 197, 94, .12); border: 1px solid rgba(34, 197, 94, .35); padding: 6px 12px; border-radius: 999px; }
+    .hero h1 { font-size: clamp(2.1rem, 4.5vw, 3.4rem); line-height: 1.05; letter-spacing: -.03em; margin: 18px 0 16px; font-weight: 800; }
+    .hero h1 em { font-style: normal; color: #fb923c; }
+    .hero p.sub { color: #cbd5e1; font-size: 1.12rem; max-width: 540px; margin: 0; }
+    .hero .ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 28px; }
+    .hero .btn-out { background: transparent; color: #fff; border-color: #334155; }
+    .hero .btn-out:hover { background: rgba(255, 255, 255, .06); }
+    .facts { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 30px; color: #cbd5e1; font-size: .92rem; }
+    .facts span { display: flex; gap: 8px; align-items: center; }
+    .facts .i { color: #fb923c; }
+
+    /* Vista previa del chat (decorativa) */
+    .preview { background: #efeae2; border-radius: 22px; padding: 18px; box-shadow: 0 30px 60px rgba(0, 0, 0, .35); border: 6px solid #1e293b; max-width: 400px; justify-self: center; width: 100%; }
+    .preview .ph { display: flex; gap: 10px; align-items: center; background: var(--navy); color: #fff; margin: -18px -18px 14px; padding: 12px 16px; border-radius: 16px 16px 0 0; font-weight: 700; font-size: .92rem; }
+    .preview .ph .logo { width: 30px; height: 30px; border-radius: 9px; box-shadow: none; }
+    .preview .ph .logo .i { width: 16px; height: 16px; }
+    .pv { max-width: 84%; padding: 9px 12px; border-radius: 12px; margin: 7px 0; font-size: .9rem; color: #0f172a; line-height: 1.35; }
+    .pv.u { background: #d9fdd3; margin-left: auto; border-top-right-radius: 3px; }
+    .pv.b { background: #fff; border-top-left-radius: 3px; }
+    .pv.ok { background: #ecfdf3; border: 1px solid #86efac; color: #15803d; font-weight: 700; text-align: center; margin: 10px auto; }
+
+    /* Secciones */
+    section.blk { padding: 64px 0; }
+    .blk h2.h { font-size: clamp(1.5rem, 3vw, 2.1rem); letter-spacing: -.02em; margin: 10px 0 8px; }
+    .blk p.lead2 { color: var(--muted); margin: 0 0 28px; max-width: 620px; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .step { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+    .step .ic { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; background: var(--orange-bg); color: var(--orange-2); margin-bottom: 14px; }
+    .step .ic .i { width: 22px; height: 22px; }
+    .step .n { font-family: var(--mono); color: var(--muted); font-size: .8rem; }
+    .step b { display: block; font-size: 1.08rem; margin: 2px 0 6px; }
+    .step p { margin: 0; color: var(--muted); font-size: .94rem; }
+
+    .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+    .prod { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px; box-shadow: var(--shadow); }
+    .prod b { display: block; }
+    .prod .mono { color: var(--orange-2); font-weight: 700; }
+    .prod button { padding: 8px 12px; border-radius: 10px; font-size: .88rem; flex: 0 0 auto; }
+
+    .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .info { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); }
+    .info .i { color: var(--orange-2); width: 22px; height: 22px; }
+    .info b { display: block; margin: 10px 0 4px; }
+    .info p { margin: 0; color: var(--muted); font-size: .94rem; white-space: pre-wrap; }
+    .cta-band { background: var(--navy); color: #fff; border-radius: 22px; padding: 36px; display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+    .cta-band h3 { margin: 0 0 4px; font-size: 1.5rem; }
+    .cta-band p { margin: 0; color: #cbd5e1; }
+    footer.l-foot { border-top: 1px solid var(--line); padding: 26px 0 100px; color: var(--muted); font-size: .88rem; }
+    footer.l-foot .wrap { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    footer.l-foot a { color: var(--muted); }
+
+    /* ---------- Widget de chat ---------- */
+    .launcher {
+      position: fixed; right: 24px; bottom: 24px; z-index: 50; border-radius: 999px; padding: 14px 20px 14px 16px;
+      background: var(--orange); color: #fff; border: 0; box-shadow: 0 12px 30px rgba(249, 115, 22, .45); font-size: 1rem;
+    }
+    .launcher:hover { background: var(--orange-2); }
+    .launcher .i { width: 22px; height: 22px; }
+    .launcher .badge-dot { position: absolute; top: 6px; right: 8px; width: 10px; height: 10px; border-radius: 50%; background: #22c55e; border: 2px solid var(--orange); }
+    body.chat-open .launcher { display: none; }
+
+    .chatwin {
+      position: fixed; right: 24px; bottom: 24px; z-index: 60; width: 400px; height: min(640px, calc(100vh - 48px));
+      background: var(--card); border-radius: 20px; box-shadow: 0 24px 60px rgba(15, 23, 42, .35); border: 1px solid var(--line);
+      display: flex; flex-direction: column; overflow: hidden; transform-origin: bottom right; animation: pop .18s ease-out;
+    }
+    @keyframes pop { from { transform: scale(.92); opacity: 0; } }
+    .cw-head { background: var(--navy); color: #fff; padding: 12px 14px; display: flex; gap: 10px; align-items: center; }
+    .cw-head .logo { width: 36px; height: 36px; border-radius: 10px; box-shadow: none; }
+    .cw-head .logo .i { width: 18px; height: 18px; }
+    .cw-head b { display: block; font-size: .98rem; }
+    .cw-head small { color: #cbd5e1; font-size: .78rem; display: flex; gap: 6px; align-items: center; }
+    .cw-head small .dot { width: 7px; height: 7px; }
+    .cw-head .close { margin-left: auto; background: transparent; border: 0; color: #cbd5e1; padding: 6px; }
+    .cw-head .close:hover { color: #fff; background: rgba(255, 255, 255, .08); }
+    .cw-body { flex: 1 1 auto; overflow-y: auto; padding: 14px; background: #efeae2; }
+    .msg { max-width: 85%; padding: 9px 13px; border-radius: 14px; margin: 7px 0; white-space: pre-wrap; word-wrap: break-word; font-size: .94rem; box-shadow: 0 1px 1px rgba(0, 0, 0, .06); }
+    .msg.bot { background: #fff; color: #0f172a; border-top-left-radius: 4px; }
+    .msg.user { background: #d9fdd3; color: #0f172a; margin-left: auto; border-top-right-radius: 4px; }
+    .msg.sys { background: #ecfdf3; color: #15803d; border: 1px solid #86efac; margin: 12px auto; text-align: center; font-weight: 700; }
+    .typing span { display: inline-block; width: 7px; height: 7px; background: #94a3b8; border-radius: 50%; margin: 0 2px; animation: blink 1.2s infinite; }
+    .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
+    .menu-list { margin: 6px 0 0; padding: 0; list-style: none; }
+    .menu-list li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px dashed #e2e8f0; }
+    .menu-list .mono { font-size: .86rem; }
+    .cw-quick { display: flex; gap: 6px; overflow-x: auto; padding: 8px 12px; background: #efeae2; scrollbar-width: none; }
+    .cw-quick button { flex: 0 0 auto; background: #fff; color: var(--orange-2); border: 1px solid #fed7aa; border-radius: 999px; font-size: .82rem; padding: 6px 11px; }
+    .cw-res { border-top: 1px solid var(--line); padding: 10px 14px; background: var(--card); }
+    .cw-res .tot { font-weight: 800; display: flex; gap: 6px; align-items: center; font-size: .95rem; }
+    .cw-res .tot .mono { color: var(--orange-2); }
+    .cw-res .items { font-size: .82rem; color: var(--muted); }
+    .cw-res button { width: 100%; margin-top: 8px; }
+    .cw-form { display: flex; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--card); }
+    .cw-form input { border-radius: 999px; padding: 12px 16px; }
+    .cw-form button { border-radius: 999px; padding: 0 14px; }
+
+    @media (max-width: 900px) {
+      .hero .wrap { grid-template-columns: 1fr; }
+      .preview { display: none; }
+      .steps, .info-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 760px) {
+      .wrap { padding: 0 16px; }
+      .l-nav .links { display: none; }
+      .l-nav .wrap { height: 60px; }
+      .l-nav .local span { display: none; }
+      .l-nav .local { margin-left: auto; }
+      .hero { padding: 40px 0 48px; }
+      section.blk { padding: 44px 0; }
+      .launcher { right: 16px; bottom: 16px; }
+      .chatwin { inset: 0; width: auto; height: auto; border-radius: 0; border: 0; }
+      .cw-body, .cw-quick { background: #0b1220; }
+      .msg.bot { background: #1e293b; color: #e8edf5; }
+      .msg.user { background: #14532d; color: #ecfdf5; }
+      .msg.sys { background: #0d2a1b; border-color: #166534; color: #86efac; }
+      .cw-quick button { background: #121b2e; border-color: #7c2d12; color: #fb923c; }
+      .menu-list li { border-color: #334155; }
+      .cw-res .tot .mono, .prod .mono { color: #fb923c; }
+      .cta-band { padding: 24px; }
+    }
+  </style>
 </head>
 <body>
-  <main>
-    <div class="layout">
-      <!-- Columna izquierda: carga del pedido -->
-      <section class="card">
-        <span class="tag" id="paso">Paso 1 de 2</span>
-        <h1 class="title">Cargá el pedido como te quede más cómodo</h1>
-        <p class="lead">Subí una captura del chat, dictalo mientras atendés el teléfono o pegá el mensaje tal cual vino. La IA arma la comanda, calcula el total, avisa qué falta y te prepara la respuesta para el cliente.</p>
-
-        <div class="tiles">
-          <label class="tile dashed" for="fileCaptura">
-            <span class="ic green" data-icon="camera"></span>
-            <span><b>Subir captura de chat</b><small>Foto de WhatsApp · o pegá con Ctrl+V</small></span>
-            <input id="fileCaptura" type="file" accept="image/*" class="hidden">
-          </label>
-          <button class="tile" id="btnDictar" type="button">
-            <span class="ic dark" data-icon="mic" id="dictarIc"></span>
-            <span><b id="dictarTit">Dictar llamada en vivo</b><small id="dictarSub">Hablá y se escribe solo</small></span>
-          </button>
-        </div>
-
-        <div id="captura" class="hidden" style="margin-top:14px">
-          <div class="row">
-            <img id="capturaImg" alt="Captura cargada" style="max-height:120px;border-radius:10px;border:1px solid var(--line)">
-            <button id="btnQuitarCaptura" class="small" type="button"><span data-icon="x"></span>Quitar captura</button>
-          </div>
-        </div>
-
-        <hr class="sep">
-        <p class="section-label">Ejemplos rápidos para probar</p>
-        <div class="chips scroll">
-          <button class="chip-btn green" data-ej="0" type="button"><span data-icon="chat"></span>WhatsApp desordenado</button>
-          <button class="chip-btn" data-ej="1" type="button"><span data-icon="phone"></span>Llamada telefónica</button>
-          <button class="chip-btn" data-ej="2" type="button"><span data-icon="refresh"></span>Cliente cambia de idea</button>
-        </div>
-
-        <div class="textbox">
-          <textarea id="texto" placeholder="Ej: hola! mandame 2 muzza y una coca, soy Juan, retiro 21:30hs"></textarea>
-          <div class="textbox-foot">
-            <span class="ok-txt"><span data-icon="checkCircle"></span>Usa tu menú y tus precios</span>
-            <span class="mono" id="contador">0 caracteres</span>
-          </div>
-        </div>
-
-        <div class="row spread" style="margin-top:16px">
-          <div class="row">
-            <button id="btnProcesar" class="btn-primary btn-lg" type="button"><span data-icon="zap"></span>Procesar con IA</button>
-            <button id="btnLimpiar" class="btn-lg btn-ghost" type="button"><span data-icon="eraser"></span>Limpiar</button>
-          </div>
-        </div>
-        <div id="error" class="error hidden"></div>
-      </section>
-
-      <!-- Columna derecha: comanda interpretada -->
-      <aside class="side">
-        <section class="card flush">
-          <div class="card-h">
-            <span class="left"><i class="dot"></i>Comanda interpretada</span>
-            <span class="code hidden" id="iaTiempo"></span>
-          </div>
-
-          <div id="vacio" class="empty">
-            <span data-icon="inbox"></span>
-            <b>Todavía no hay comanda</b>
-            Cargá un pedido a la izquierda y la IA lo ordena acá: productos, total, datos del cliente y respuesta lista.
-          </div>
-
-          <div id="resultado" class="hidden">
-            <div class="card-b kv">
-              <div>
-                <label>Cliente</label>
-                <div class="field"><span data-icon="user"></span><input id="cNombre" placeholder="Nombre"></div>
-              </div>
-              <div>
-                <label>Teléfono</label>
-                <div class="field"><span data-icon="phone"></span><input id="cTel" inputmode="tel" placeholder="Sin teléfono"></div>
-              </div>
-              <div>
-                <label>Entrega</label>
-                <div class="field"><span data-icon="store" id="eIc"></span>
-                  <select id="eTipo">
-                    <option value="">Sin definir</option>
-                    <option value="retiro">Retira en el local</option>
-                    <option value="envio">Envío a domicilio</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label>Horario</label>
-                <div class="field"><span data-icon="clock"></span><input id="eHorario" placeholder="Lo antes posible"></div>
-              </div>
-              <div id="dirWrap">
-                <label>Dirección</label>
-                <div class="field"><span data-icon="pin"></span><input id="eDir" placeholder="Sin dirección"></div>
-              </div>
-              <div>
-                <label>Pago</label>
-                <div class="field"><span data-icon="card"></span><input id="pago" placeholder="Sin definir"></div>
-              </div>
-            </div>
-
-            <div class="card-b">
-              <p class="section-label">Detalle del pedido</p>
-              <div class="items-list" id="items"></div>
-              <div class="add-row">
-                <select id="agregarProd"></select>
-                <button id="btnAgregar" class="small" type="button"><span data-icon="plus"></span>Agregar</button>
-              </div>
-              <div style="margin-top:16px">
-                <div class="sum"><span>Subtotal productos</span><span class="mono" id="tSub"></span></div>
-                <div class="sum"><span>Costo de envío</span><span id="tEnvio"></span></div>
-              </div>
-              <div class="total-row"><span>Total</span><b id="tTotal"></b></div>
-              <div id="alertas"></div>
-            </div>
-
-            <div class="card-b">
-              <div class="row spread" style="margin-bottom:10px">
-                <b>Respuesta sugerida para el cliente</b>
-                <span class="pill green"><span data-icon="sparkles"></span>Escrita por la IA</span>
-              </div>
-              <div class="wa-box">
-                <div class="wa-msg">
-                  <span class="av" data-icon="chat"></span>
-                  <textarea id="respuesta" aria-label="Respuesta para el cliente"></textarea>
-                </div>
-                <div class="wa-meta"><span id="hora"></span><span data-icon="checkCheck"></span></div>
-                <div class="wa-actions">
-                  <button id="btnCopiar" class="small" type="button"><span data-icon="copy"></span><span>Copiar</span></button>
-                  <a id="btnWa" class="btn btn-wa small" target="_blank" rel="noopener"><span data-icon="send"></span>Enviar por WhatsApp</a>
-                </div>
-              </div>
-            </div>
-
-            <div class="card-b">
-              <button id="btnGuardar" class="btn-dark btn-lg btn-block" type="button"><span data-icon="chef"></span>Confirmar y mandar a cocina</button>
-              <div id="guardado" class="ok hidden"></div>
-            </div>
-          </div>
-        </section>
-      </aside>
+  <!-- Nav -->
+  <nav class="l-nav">
+    <div class="wrap">
+      <a class="brand" href="/">
+        <span class="logo" data-icon="pizza"></span>
+        <span class="brand-txt"><b data-negocio>…</b><small>Pedidos online</small></span>
+      </a>
+      <div class="links">
+        <a href="#como">Cómo pedir</a>
+        <a href="#menu">Menú</a>
+        <a href="#info">Horarios y envíos</a>
+      </div>
+      <button class="btn-primary small" data-abrir type="button"><span data-icon="chat"></span>Pedir ahora</button>
+      <a class="local" href="/login.html"><span data-icon="lock"></span><span>Acceso del local</span></a>
     </div>
-  </main>
-  <script src="common.js"></script>
-  <script>renderShell('nuevo'); hydrateIcons();</script>
-  <script src="app.js"></script>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="wrap">
+      <div>
+        <span class="pill-live"><i class="dot"></i>Pedidos online las 24 hs</span>
+        <h1>Tu pedido en <em>un minuto</em>, sin esperar que te atiendan.</h1>
+        <p class="sub">Escribile a nuestro asistente como le escribís a un amigo. Te arma el pedido, te dice el total al toque y lo manda directo a la cocina.</p>
+        <div class="ctas">
+          <button class="btn-primary btn-lg" data-abrir type="button"><span data-icon="chat"></span>Pedir por chat</button>
+          <a class="btn btn-lg btn-out" href="#menu"><span data-icon="utensils"></span>Ver el menú</a>
+        </div>
+        <div class="facts">
+          <span><span data-icon="clock"></span><span id="fHorario">…</span></span>
+          <span><span data-icon="bike"></span>Envío <b id="fEnvio" class="mono" style="color:#fff">…</b></span>
+        </div>
+      </div>
+      <div class="preview" aria-hidden="true">
+        <div class="ph"><span class="logo" data-icon="pizza"></span><span data-negocio>…</span></div>
+        <div class="pv u">hola! quiero 2 muzza y una coca para retirar</div>
+        <div class="pv b">¡Buenísimo! Anoté 2 Pizza muzzarella y 1 Coca-Cola 1.5L. ¿A nombre de quién lo dejo?</div>
+        <div class="pv u">Juan, 11 5555 1234</div>
+        <div class="pv b">Listo Juan. Total <b>$21.500</b>. Tocá "Confirmar pedido" y sale para la cocina.</div>
+        <div class="pv ok">Pedido confirmado</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Cómo pedir -->
+  <section class="blk" id="como">
+    <div class="wrap">
+      <span class="tag">Así de fácil</span>
+      <h2 class="h">Pedí sin llamar y sin esperar respuesta</h2>
+      <p class="lead2">Nuestro asistente responde al instante, conoce el menú y los precios, y no se le pasa ningún pedido.</p>
+      <div class="steps">
+        <div class="step"><span class="ic" data-icon="chat"></span><span class="n">01</span><b>Escribí lo que querés</b><p>"2 muzzas y una coca para las 21". También podés preguntar horarios, envíos o formas de pago.</p></div>
+        <div class="step"><span class="ic" data-icon="check"></span><span class="n">02</span><b>Confirmá con un toque</b><p>Ves el resumen con el total exacto y lo confirmás. El pedido le llega al local en el momento.</p></div>
+        <div class="step"><span class="ic" data-icon="bike"></span><span class="n">03</span><b>Retirá o recibilo</b><p>Te avisamos por WhatsApp cuando está listo para retirar o sale para tu casa.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Menú -->
+  <section class="blk" id="menu" style="padding-top:0">
+    <div class="wrap">
+      <span class="tag">Menú</span>
+      <h2 class="h">Lo que te podés pedir hoy</h2>
+      <p class="lead2">Tocá "Pedir" en cualquier producto y seguimos por chat.</p>
+      <div class="menu-grid" id="menuGrid"><p class="muted">Cargando menú…</p></div>
+    </div>
+  </section>
+
+  <!-- Info -->
+  <section class="blk" id="info" style="padding-top:0">
+    <div class="wrap">
+      <div class="info-grid">
+        <div class="info"><span data-icon="clock"></span><b>Horarios</b><p id="iHorario">…</p></div>
+        <div class="info"><span data-icon="bike"></span><b>Envíos</b><p id="iEnvio">…</p></div>
+        <div class="info"><span data-icon="info"></span><b>Bueno saber</b><p id="iInfo">…</p></div>
+      </div>
+      <div class="cta-band" style="margin-top:28px">
+        <div><h3>¿Con hambre?</h3><p>Hacé tu pedido ahora, te respondemos al instante.</p></div>
+        <button class="btn-primary btn-lg" data-abrir type="button"><span data-icon="chat"></span>Empezar pedido</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="l-foot">
+    <div class="wrap">
+      <span>© <span data-negocio>…</span> · Pedidos con Pedido Express</span>
+      <a href="/login.html">Acceso del local</a>
+    </div>
+  </footer>
+
+  <!-- Botón flotante + ventana de chat -->
+  <button class="launcher" data-abrir type="button" aria-label="Abrir chat de pedidos"><span data-icon="chat"></span>¿Pedimos?<i class="badge-dot"></i></button>
+
+  <div class="chatwin hidden" id="chatwin" role="dialog" aria-label="Chat de pedidos">
+    <div class="cw-head">
+      <span class="logo" data-icon="pizza"></span>
+      <div><b data-negocio>…</b><small><i class="dot"></i>Asistente · responde al instante</small></div>
+      <button class="close" id="btnCerrar" type="button" aria-label="Minimizar chat"><span data-icon="chevronDown"></span></button>
+    </div>
+    <div class="cw-body" id="chat"></div>
+    <div class="cw-quick" id="quick">
+      <button data-q="menu" type="button"><span data-icon="utensils"></span>Ver el menú</button>
+      <button data-q="¿Hacen envíos? ¿Cuánto sale?" type="button"><span data-icon="bike"></span>Envíos</button>
+      <button data-q="¿Qué horarios tienen?" type="button"><span data-icon="clock"></span>Horarios</button>
+      <button data-q="¿Cómo puedo pagar?" type="button"><span data-icon="card"></span>Pagos</button>
+    </div>
+    <div class="cw-res hidden" id="resumen">
+      <div class="tot" id="rTotal"></div>
+      <div class="items" id="rItems"></div>
+      <div class="items" id="rFalta"></div>
+      <button id="btnConfirmar" class="btn-primary" disabled type="button"><span data-icon="check"></span>Confirmar pedido</button>
+    </div>
+    <form class="cw-form" id="form" autocomplete="off">
+      <input id="input" placeholder="Escribí tu pedido o consulta…" maxlength="1000" aria-label="Mensaje">
+      <button id="btnEnviar" class="btn-primary" type="submit" aria-label="Enviar"><span data-icon="send"></span></button>
+    </form>
+  </div>
+
+  <script src="/common.js"></script>
+  <script>
+    hydrateIcons();
+    let config = null;
+    let mensajes = [];   // historial que se manda a la IA
+    let estado = null;   // último { pedido, faltantes, listo }
+    let enviando = false;
+    let saludado = false;
+
+    // ---------- Landing ----------
+    api('/api/config').then((c) => {
+      config = c;
+      document.querySelectorAll('[data-negocio]').forEach((el) => (el.textContent = c.negocio));
+      document.title = c.negocio + ' · Pedí online';
+      $('#fHorario').textContent = c.horarios || 'Consultá horarios';
+      $('#fEnvio').textContent = money(c.envio);
+      $('#iHorario').textContent = c.horarios || 'Consultanos por chat.';
+      $('#iEnvio').textContent = `Costo de envío: ${money(c.envio)}. También podés retirar sin cargo.`;
+      $('#iInfo').textContent = c.info || 'Escribinos por chat y te respondemos al instante.';
+      $('#menuGrid').innerHTML = c.menu.map((m, i) => `
+        <div class="prod">
+          <div><b>${esc(m.producto)}</b><span class="mono">${money(m.precio)}</span></div>
+          <button class="btn-primary" data-pedir="${i}" type="button">${icon('plus')}Pedir</button>
+        </div>`).join('');
+      if (location.hash === '#pedir') abrirChat();
+    }).catch(() => { $('#menuGrid').innerHTML = '<p class="muted">No pudimos cargar el menú. Probá recargar.</p>'; });
+
+    $('#menuGrid').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-pedir]');
+      if (!b || !config) return;
+      abrirChat();
+      enviar('Quiero 1 ' + config.menu[b.dataset.pedir].producto);
+    });
+
+    // ---------- Ventana de chat ----------
+    function abrirChat() {
+      $('#chatwin').classList.remove('hidden');
+      document.body.classList.add('chat-open');
+      if (!saludado && config) {
+        saludado = true;
+        burbuja(`¡Hola! 👋 Soy el asistente de ${config.negocio}. Contame qué querés pedir o preguntame lo que necesites.`, 'bot');
+      }
+      if (window.innerWidth > 760) setTimeout(() => $('#input').focus(), 50);
+    }
+    function cerrarChat() {
+      $('#chatwin').classList.add('hidden');
+      document.body.classList.remove('chat-open');
+      if (location.hash === '#pedir') history.replaceState(null, '', location.pathname);
+    }
+    document.querySelectorAll('[data-abrir]').forEach((b) => b.addEventListener('click', abrirChat));
+    $('#btnCerrar').addEventListener('click', cerrarChat);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') cerrarChat(); });
+    window.addEventListener('hashchange', () => { if (location.hash === '#pedir') abrirChat(); });
+
+    function burbuja(texto, clase, html) {
+      const d = document.createElement('div');
+      d.className = 'msg ' + clase;
+      if (html) d.innerHTML = html; else d.textContent = texto;
+      $('#chat').appendChild(d);
+      $('#chat').scrollTop = $('#chat').scrollHeight;
+      return d;
+    }
+
+    function mostrarResumen() {
+      const p = estado?.pedido;
+      if (!p || !p.items.length) { $('#resumen').classList.add('hidden'); return; }
+      $('#resumen').classList.remove('hidden');
+      $('#rTotal').innerHTML = icon('list') + 'Tu pedido · <span class="mono">' + money(p.total) + '</span>' + (p.envio ? ' <span class="muted" style="font-weight:500">(envío incl.)</span>' : '');
+      $('#rItems').textContent = p.items.map((i) => `${i.cantidad} × ${i.producto}`).join(', ');
+      $('#rFalta').textContent = estado.listo ? '' : 'Falta: ' + estado.faltantes.join(', ');
+      $('#btnConfirmar').disabled = !estado.listo;
+    }
+
+    async function enviar(texto) {
+      texto = texto.trim();
+      if (!texto || enviando) return;
+      enviando = true;
+      $('#btnEnviar').disabled = true;
+      $('#quick').classList.add('hidden');
+      burbuja(texto, 'user');
+      mensajes.push({ role: 'user', content: texto });
+      const typing = burbuja('', 'bot typing', '<span></span><span></span><span></span>');
+      try {
+        const r = await api('/api/chat', { method: 'POST', body: { mensajes, pedido: estado?.pedido } });
+        typing.remove();
+        burbuja(r.respuesta, 'bot');
+        mensajes.push({ role: 'assistant', content: r.respuesta });
+        estado = r;
+        mostrarResumen();
+      } catch (e) {
+        typing.remove();
+        mensajes.pop(); // no guardar el mensaje que falló, así se puede reintentar
+        burbuja('No pude responder: ' + e.message, 'bot');
+        $('#input').value = texto;
+      } finally {
+        enviando = false;
+        $('#btnEnviar').disabled = false;
+        if (window.innerWidth > 760) $('#input').focus();
+      }
+    }
+
+    $('#form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const t = $('#input').value;
+      $('#input').value = '';
+      enviar(t);
+    });
+
+    $('#quick').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-q]');
+      if (!b) return;
+      if (b.dataset.q === 'menu') {
+        // El menú se muestra directo, sin gastar una llamada a la IA.
+        burbuja('', 'bot', '<b>Nuestro menú</b><ul class="menu-list">' + config.menu.map((m) => `<li><span>${esc(m.producto)}</span><span class="mono">${money(m.precio)}</span></li>`).join('') + `<li><span>Envío</span><span class="mono">${money(config.envio)}</span></li></ul><div style="margin-top:6px">¿Qué te gustaría pedir?</div>`);
+        return;
+      }
+      enviar(b.dataset.q);
+    });
+
+    $('#btnConfirmar').addEventListener('click', async () => {
+      if (!estado?.listo) return;
+      const btn = $('#btnConfirmar');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Enviando…';
+      const p = estado.pedido;
+      try {
+        const guardado = await api('/api/pedidos', {
+          method: 'POST',
+          body: {
+            origen: 'chat',
+            cliente: p.cliente, items: p.items, entrega: p.entrega, pago: p.pago,
+            texto_original: mensajes.map((m) => (m.role === 'user' ? 'Cliente: ' : 'Asistente: ') + m.content).join('\n')
+          }
+        });
+        burbuja('', 'sys', `${icon('checkCircle')} ¡Pedido #${guardado.id} confirmado! Total ${money(guardado.total)}.<br>Ya le llegó al local. Te avisamos por WhatsApp cuando esté listo.`);
+        mensajes = [];
+        estado = null;
+        mostrarResumen();
+        $('#quick').classList.remove('hidden');
+      } catch (e) {
+        burbuja('No se pudo confirmar: ' + e.message, 'bot');
+        btn.disabled = false;
+      } finally {
+        btn.innerHTML = icon('check') + 'Confirmar pedido';
+      }
+    });
+  </script>
 </body>
 </html>

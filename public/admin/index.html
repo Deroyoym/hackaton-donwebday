@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
+  <title>Pedido Express</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <div class="layout">
+      <!-- Columna izquierda: carga del pedido -->
+      <section class="card">
+        <span class="tag" id="paso">Paso 1 de 2</span>
+        <h1 class="title">Cargá el pedido como te quede más cómodo</h1>
+        <p class="lead">Subí una captura del chat, dictalo mientras atendés el teléfono o pegá el mensaje tal cual vino. La IA arma la comanda, calcula el total, avisa qué falta y te prepara la respuesta para el cliente.</p>
+
+        <div class="tiles">
+          <label class="tile dashed" for="fileCaptura">
+            <span class="ic green" data-icon="camera"></span>
+            <span><b>Subir captura de chat</b><small>Foto de WhatsApp · o pegá con Ctrl+V</small></span>
+            <input id="fileCaptura" type="file" accept="image/*" class="hidden">
+          </label>
+          <button class="tile" id="btnDictar" type="button">
+            <span class="ic dark" data-icon="mic" id="dictarIc"></span>
+            <span><b id="dictarTit">Dictar llamada en vivo</b><small id="dictarSub">Hablá y se escribe solo</small></span>
+          </button>
+        </div>
+
+        <div id="captura" class="hidden" style="margin-top:14px">
+          <div class="row">
+            <img id="capturaImg" alt="Captura cargada" style="max-height:120px;border-radius:10px;border:1px solid var(--line)">
+            <button id="btnQuitarCaptura" class="small" type="button"><span data-icon="x"></span>Quitar captura</button>
+          </div>
+        </div>
+
+        <hr class="sep">
+        <p class="section-label">Ejemplos rápidos para probar</p>
+        <div class="chips scroll">
+          <button class="chip-btn green" data-ej="0" type="button"><span data-icon="chat"></span>WhatsApp desordenado</button>
+          <button class="chip-btn" data-ej="1" type="button"><span data-icon="phone"></span>Llamada telefónica</button>
+          <button class="chip-btn" data-ej="2" type="button"><span data-icon="refresh"></span>Cliente cambia de idea</button>
+        </div>
+
+        <div class="textbox">
+          <textarea id="texto" placeholder="Ej: hola! mandame 2 muzza y una coca, soy Juan, retiro 21:30hs"></textarea>
+          <div class="textbox-foot">
+            <span class="ok-txt"><span data-icon="checkCircle"></span>Usa tu menú y tus precios</span>
+            <span class="mono" id="contador">0 caracteres</span>
+          </div>
+        </div>
+
+        <div class="row spread" style="margin-top:16px">
+          <div class="row">
+            <button id="btnProcesar" class="btn-primary btn-lg" type="button"><span data-icon="zap"></span>Procesar con IA</button>
+            <button id="btnLimpiar" class="btn-lg btn-ghost" type="button"><span data-icon="eraser"></span>Limpiar</button>
+          </div>
+        </div>
+        <div id="error" class="error hidden"></div>
+      </section>
+
+      <!-- Columna derecha: comanda interpretada -->
+      <aside class="side">
+        <section class="card flush">
+          <div class="card-h">
+            <span class="left"><i class="dot"></i>Comanda interpretada</span>
+            <span class="code hidden" id="iaTiempo"></span>
+          </div>
+
+          <div id="vacio" class="empty">
+            <span data-icon="inbox"></span>
+            <b>Todavía no hay comanda</b>
+            Cargá un pedido a la izquierda y la IA lo ordena acá: productos, total, datos del cliente y respuesta lista.
+          </div>
+
+          <div id="resultado" class="hidden">
+            <div class="card-b kv">
+              <div>
+                <label>Cliente</label>
+                <div class="field"><span data-icon="user"></span><input id="cNombre" placeholder="Nombre"></div>
+              </div>
+              <div>
+                <label>Teléfono</label>
+                <div class="field"><span data-icon="phone"></span><input id="cTel" inputmode="tel" placeholder="Sin teléfono"></div>
+              </div>
+              <div>
+                <label>Entrega</label>
+                <div class="field"><span data-icon="store" id="eIc"></span>
+                  <select id="eTipo">
+                    <option value="">Sin definir</option>
+                    <option value="retiro">Retira en el local</option>
+                    <option value="envio">Envío a domicilio</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label>Horario</label>
+                <div class="field"><span data-icon="clock"></span><input id="eHorario" placeholder="Lo antes posible"></div>
+              </div>
+              <div id="dirWrap">
+                <label>Dirección</label>
+                <div class="field"><span data-icon="pin"></span><input id="eDir" placeholder="Sin dirección"></div>
+              </div>
+              <div>
+                <label>Pago</label>
+                <div class="field"><span data-icon="card"></span><input id="pago" placeholder="Sin definir"></div>
+              </div>
+            </div>
+
+            <div class="card-b">
+              <p class="section-label">Detalle del pedido</p>
+              <div class="items-list" id="items"></div>
+              <div class="add-row">
+                <select id="agregarProd"></select>
+                <button id="btnAgregar" class="small" type="button"><span data-icon="plus"></span>Agregar</button>
+              </div>
+              <div style="margin-top:16px">
+                <div class="sum"><span>Subtotal productos</span><span class="mono" id="tSub"></span></div>
+                <div class="sum"><span>Costo de envío</span><span id="tEnvio"></span></div>
+              </div>
+              <div class="total-row"><span>Total</span><b id="tTotal"></b></div>
+              <div id="alertas"></div>
+            </div>
+
+            <div class="card-b">
+              <div class="row spread" style="margin-bottom:10px">
+                <b>Respuesta sugerida para el cliente</b>
+                <span class="pill green"><span data-icon="sparkles"></span>Escrita por la IA</span>
+              </div>
+              <div class="wa-box">
+                <div class="wa-msg">
+                  <span class="av" data-icon="chat"></span>
+                  <textarea id="respuesta" aria-label="Respuesta para el cliente"></textarea>
+                </div>
+                <div class="wa-meta"><span id="hora"></span><span data-icon="checkCheck"></span></div>
+                <div class="wa-actions">
+                  <button id="btnCopiar" class="small" type="button"><span data-icon="copy"></span><span>Copiar</span></button>
+                  <a id="btnWa" class="btn btn-wa small" target="_blank" rel="noopener"><span data-icon="send"></span>Enviar por WhatsApp</a>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-b">
+              <button id="btnGuardar" class="btn-dark btn-lg btn-block" type="button"><span data-icon="chef"></span>Confirmar y mandar a cocina</button>
+              <div id="guardado" class="ok hidden"></div>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </div>
+  </main>
+  <script src="/common.js"></script>
+  <script>renderShell('nuevo'); hydrateIcons();</script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -14,6 +14,10 @@ async function api(url, opts = {}) {
     throw new Error('No hay conexión con el servidor.');
   }
   const data = await res.json().catch(() => ({}));
+  // Sesión vencida en el área del negocio: volver al login.
+  if (res.status === 401 && location.pathname.startsWith('/admin')) {
+    location.href = '/login.html?next=' + encodeURIComponent(location.pathname);
+  }
   if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
   return data;
 }
@@ -65,7 +69,13 @@ const ICONS = {
   link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
   save: '<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>',
   dollar: '<line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
-  play: '<polygon points="6 3 20 12 6 21 6 3"/>'
+  play: '<polygon points="6 3 20 12 6 21 6 3"/>',
+  lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  logout: '<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>',
+  chevronDown: '<path d="m6 9 6 6 6-6"/>',
+  arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  pizza: '<path d="m12 14-1 1"/><path d="m13.75 18.25-1.25 1.42"/><path d="M17.775 5.654a15.68 15.68 0 0 0-12.121 12.12"/><path d="M18.8 9.3a1 1 0 0 0 2.1 7.7"/><path d="M21.964 20.732a1 1 0 0 1-1.232 1.232l-18-5a1 1 0 0 1-.695-1.232A19.68 19.68 0 0 1 15.732 2.037a1 1 0 0 1 1.232.695z"/>',
+  globe: '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>'
 };
 
 function icon(name, cls = '') {
@@ -82,10 +92,10 @@ function hydrateIcons(root = document) {
 
 // ---------- Header + navegación compartidos (pantallas del negocio) ----------
 const NAV = [
-  { id: 'nuevo', href: '/', label: 'Nuevo pedido', short: 'Cargar', icon: 'plusCircle' },
-  { id: 'panel', href: '/panel.html', label: 'Comandas', short: 'Comandas', icon: 'list', badge: true },
-  { id: 'menu', href: '/config.html', label: 'Menú y precios', short: 'Menú', icon: 'utensils' },
-  { id: 'chat', href: '/pedir.html', label: 'Chat clientes', short: 'Chat', icon: 'chat', ext: true }
+  { id: 'nuevo', href: '/admin/', label: 'Nuevo pedido', short: 'Cargar', icon: 'plusCircle' },
+  { id: 'panel', href: '/admin/panel.html', label: 'Comandas', short: 'Comandas', icon: 'list', badge: true },
+  { id: 'menu', href: '/admin/config.html', label: 'Menú y precios', short: 'Menú', icon: 'utensils' },
+  { id: 'chat', href: '/', label: 'Página clientes', short: 'Clientes', icon: 'globe', ext: true }
 ];
 
 function renderShell(active) {
@@ -95,13 +105,18 @@ function renderShell(active) {
     </a>`).join('');
   document.body.insertAdjacentHTML('afterbegin', `
     <header class="topbar">
-      <a class="brand" href="/">
+      <a class="brand" href="/admin/">
         <span class="logo">${icon('zap')}</span>
         <span class="brand-txt"><b>Pedido Express</b><small data-negocio>…</small></span>
       </a>
       <nav class="nav">${links}</nav>
       <div class="ia-status" id="iaStatus" title="Estado de la IA"><i class="dot"></i><span>IA…</span></div>
+      <button class="logout-btn" id="btnLogout" type="button" title="Cerrar sesión" aria-label="Cerrar sesión">${icon('logout')}</button>
     </header>`);
+  $('#btnLogout').addEventListener('click', async () => {
+    try { await api('/api/logout', { method: 'POST' }); } catch {}
+    location.href = '/login.html';
+  });
   document.body.insertAdjacentHTML('beforeend', `
     <nav class="bottomnav">${NAV.map((n) => `
       <a href="${n.href}" class="${n.id === active ? 'active' : ''}" ${n.ext ? 'target="_blank" rel="noopener"' : ''}>

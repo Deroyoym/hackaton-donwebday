@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Raleway:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
 
 :root {
   --bg: #f4f6f9;
@@ -26,6 +26,7 @@
   --radius: 16px;
   --shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 8px 24px rgba(15, 23, 42, .06);
   --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  --display: 'Raleway', 'Lato', system-ui, sans-serif;
 }
 
 /* Celular: tema oscuro como en el diseño mobile */
@@ -55,12 +56,19 @@
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
-  font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Lato', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.45;
 }
 a { color: var(--orange-2); }
+/* Títulos en Raleway, texto en Lato */
+h1, h2, h3, .title, .brand-txt b, .card-h, .tag, .section-label, .tile b, .stat span, .order-h b, .cw-head b, .hero h1, .blk h2.h { font-family: var(--display); }
+
+/* Botón de cerrar sesión */
+.logout-btn { background: transparent; border: 1px solid #334155; color: #cbd5e1; padding: 8px; border-radius: 10px; }
+.logout-btn:hover { background: rgba(255,255,255,.06); color: #fff; }
+@media (max-width: 1000px) { .logout-btn { margin-left: auto; } }
 .hidden { display: none !important; }
 .muted { color: var(--muted); font-size: .9rem; }
 .mono { font-family: var(--mono); }

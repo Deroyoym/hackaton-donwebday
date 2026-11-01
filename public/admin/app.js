@@ -327,7 +327,7 @@ $('#btnGuardar').addEventListener('click', async () => {
         texto_original: pedido.texto_original
       }
     });
-    $('#guardado').innerHTML = `${icon('checkCircle')} Comanda <b class="mono">#${p.id}</b> enviada a cocina (${money(p.total)}). <a href="/panel.html">Ver comandas</a>`;
+    $('#guardado').innerHTML = `${icon('checkCircle')} Comanda <b class="mono">#${p.id}</b> enviada a cocina (${money(p.total)}). <a href="/admin/panel.html">Ver comandas</a>`;
     $('#guardado').classList.remove('hidden');
     actualizarContador();
   } catch (e) {

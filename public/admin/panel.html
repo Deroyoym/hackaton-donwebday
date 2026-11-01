@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0f172a">
   <title>Comandas</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <main>
@@ -19,7 +19,7 @@
           <div class="row" style="margin-top:12px">
             <button id="btnCopiarLink" class="small" type="button"><span data-icon="link"></span><span>Copiar link</span></button>
             <a id="btnCompartir" class="btn btn-wa small" target="_blank" rel="noopener"><span data-icon="send"></span>Compartir por WhatsApp</a>
-            <a href="/pedir.html" target="_blank" rel="noopener" class="btn btn-primary small"><span data-icon="external"></span>Probar chat</a>
+            <a href="/#pedir" target="_blank" rel="noopener" class="btn btn-primary small"><span data-icon="external"></span>Probar chat</a>
           </div>
         </div>
       </div>
@@ -41,7 +41,7 @@
     <div id="error" class="error hidden"></div>
     <div id="lista" class="orders"><p class="muted">Cargando…</p></div>
   </main>
-  <script src="common.js"></script>
+  <script src="/common.js"></script>
   <script>
     renderShell('panel');
     hydrateIcons();
@@ -53,7 +53,7 @@
     let ultimoId = null;
     let nuevos = new Set();
 
-    const linkClientes = location.origin + '/pedir.html';
+    const linkClientes = location.origin + "/#pedir";
     $('#qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=208x208&margin=4&data=' + encodeURIComponent(linkClientes);
     $('#qr').onerror = () => $('#qr').classList.add('hidden');
     $('#btnCopiarLink').addEventListener('click', async () => {
@@ -109,7 +109,7 @@
 
       const lista = $('#filtro').value === 'todos' ? pedidos : pedidos.filter((p) => !['entregado', 'cancelado'].includes(p.estado));
       if (!lista.length) {
-        $('#lista').innerHTML = `<div class="card empty" style="grid-column:1/-1">${icon('inbox')}<b>No hay comandas activas</b><a href="/">Cargá un pedido</a> o compartí el chat con tus clientes.</div>`;
+        $('#lista').innerHTML = `<div class="card empty" style="grid-column:1/-1">${icon('inbox')}<b>No hay comandas activas</b><a href="/admin/">Cargá un pedido</a> o compartí el chat con tus clientes.</div>`;
         return;
       }
       $('#lista').innerHTML = lista.map((p) => {

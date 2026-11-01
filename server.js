@@ -2,16 +2,63 @@ require('dotenv').config();
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-
-const app = express();
-app.use(express.json({ limit: '8mb' })); // margen para capturas de pantalla en base64
-app.use(express.static(path.join(__dirname, 'public')));
+const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
 const OPENAI_BASE_URL = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const DATA_FILE = path.join(__dirname, 'data.json');
+
+// ---------- Login del negocio (cookie firmada, sin dependencias) ----------
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'donpepe';
+const ES_DEMO = !process.env.ADMIN_PASSWORD; // sin contraseña propia, el login muestra el acceso demo
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.createHash('sha256').update('pedido-express:' + ADMIN_PASSWORD + OPENAI_API_KEY).digest('hex');
+const SESION_HORAS = 12;
+
+const firmar = (v) => crypto.createHmac('sha256', SESSION_SECRET).update(v).digest('hex');
+const igualSeguro = (a, b) => {
+  const ha = crypto.createHash('sha256').update(String(a)).digest();
+  const hb = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(ha, hb);
+};
+function sesionValida(req) {
+  const m = /(?:^|;\s*)pe_sess=([^;]+)/.exec(req.headers.cookie || '');
+  if (!m) return false;
+  const [exp, firma] = decodeURIComponent(m[1]).split('.');
+  return !!exp && !!firma && igualSeguro(firma, firmar(exp)) && Number(exp) > Date.now();
+}
+function cookieSesion(req, valor, maxAge) {
+  const segura = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  return `pe_sess=${encodeURIComponent(valor)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${segura ? '; Secure' : ''}`;
+}
+const soloAdmin = (req, res, next) => (sesionValida(req) ? next() : res.status(401).json({ error: 'Tu sesión venció. Volvé a iniciar sesión.' }));
+
+const app = express();
+app.use(express.json({ limit: '8mb' })); // margen para capturas de pantalla en base64
+// Las pantallas del negocio (/admin) requieren sesión; si no hay, van al login.
+app.use('/admin', (req, res, next) => (sesionValida(req) ? next() : res.redirect('/login.html?next=' + encodeURIComponent(req.originalUrl))));
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.post('/api/login', async (req, res) => {
+  const okUser = igualSeguro(String(req.body?.usuario || '').trim().toLowerCase(), ADMIN_USER.toLowerCase());
+  const okPass = igualSeguro(String(req.body?.password || ''), ADMIN_PASSWORD);
+  if (!okUser || !okPass) {
+    await new Promise((r) => setTimeout(r, 600)); // frena intentos por fuerza bruta
+    return res.status(401).json({ error: 'Usuario o contraseña incorrectos.' });
+  }
+  const exp = String(Date.now() + SESION_HORAS * 3600 * 1000);
+  res.setHeader('Set-Cookie', cookieSesion(req, exp + '.' + firmar(exp), SESION_HORAS * 3600));
+  res.json({ ok: true });
+});
+app.post('/api/logout', (req, res) => {
+  res.setHeader('Set-Cookie', cookieSesion(req, '', 0));
+  res.json({ ok: true });
+});
+app.get('/api/auth', (req, res) => {
+  res.json({ logueado: sesionValida(req), demo: ES_DEMO ? { usuario: ADMIN_USER, password: ADMIN_PASSWORD } : null });
+});
 
 // ---------- Datos (archivo JSON) ----------
 const DEFAULT_DATA = {
@@ -255,7 +302,7 @@ function calcularTotales(p, config) {
 // ---------- API ----------
 app.get('/api/config', (req, res) => res.json(data.config));
 
-app.put('/api/config', (req, res) => {
+app.put('/api/config', soloAdmin, (req, res) => {
   const b = req.body || {};
   const menu = (Array.isArray(b.menu) ? b.menu : [])
     .map((m) => ({ producto: str(m?.producto), precio: Math.max(0, Number(m?.precio) || 0) }))
@@ -273,7 +320,7 @@ app.put('/api/config', (req, res) => {
   res.json(data.config);
 });
 
-app.post('/api/procesar', async (req, res) => {
+app.post('/api/procesar', soloAdmin, async (req, res) => {
   const texto = str(req.body?.texto);
   const imagen = str(req.body?.imagen);
   if (!texto && !imagen) return res.status(400).json({ error: 'Pegá el mensaje del cliente o subí una captura.' });
@@ -338,13 +385,21 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-app.get('/api/pedidos', (req, res) => res.json([...data.pedidos].reverse()));
+app.get('/api/pedidos', soloAdmin, (req, res) => res.json([...data.pedidos].reverse()));
 
 app.post('/api/pedidos', (req, res) => {
   const b = req.body || {};
+  const admin = sesionValida(req);
+  // Los precios salen siempre del menú: el navegador no puede cambiarlos.
+  const precios = new Map(data.config.menu.map((m) => [norm(m.producto), m]));
   const items = (Array.isArray(b.items) ? b.items : [])
-    .map((i) => ({ producto: str(i?.producto), cantidad: Math.max(1, Math.round(Number(i?.cantidad) || 1)), precio_unit: Math.max(0, Number(i?.precio_unit) || 0), nota: str(i?.nota) }))
-    .filter((i) => i.producto);
+    .map((i) => {
+      const m = precios.get(norm(i?.producto));
+      if (!m) return null;
+      return { producto: m.producto, cantidad: Math.min(99, Math.max(1, Math.round(Number(i?.cantidad) || 1))), precio_unit: Number(m.precio) || 0, nota: str(i?.nota).slice(0, 200) };
+    })
+    .filter(Boolean);
+  if (!admin) b.origen = 'chat'; // sin sesión, solo puede venir del chat de clientes
   if (!items.length) return res.status(400).json({ error: 'El pedido no tiene productos.' });
   const tipo = ['envio', 'retiro'].includes(b?.entrega?.tipo) ? b.entrega.tipo : '';
   const pedido = calcularTotales({
@@ -365,7 +420,7 @@ app.post('/api/pedidos', (req, res) => {
 });
 
 const ESTADOS = ['nuevo', 'preparando', 'listo', 'entregado', 'cancelado'];
-app.patch('/api/pedidos/:id', (req, res) => {
+app.patch('/api/pedidos/:id', soloAdmin, (req, res) => {
   const p = data.pedidos.find((x) => x.id === Number(req.params.id));
   if (!p) return res.status(404).json({ error: 'Pedido no encontrado.' });
   if (!ESTADOS.includes(req.body?.estado)) return res.status(400).json({ error: 'Estado inválido.' });
