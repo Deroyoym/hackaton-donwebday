@@ -36,6 +36,19 @@ La app no usa subdominios: es una sola app Node en un solo servidor, a la que se
 | `http://dwday-125148885.online` | Redirige a la versión https. |
 | `http://201.32.132.107` | Acceso directo por IP, sin https. Todo anda menos el dictado. |
 
+#### ¿Por qué hay una versión con https si la URL entregada es http?
+
+La URL que dio la organización es `http://201.32.132.107`, sin certificado. La app anda completa por ahí, salvo una función: **el dictado de llamadas en vivo**. Los navegadores (Chrome, Edge, Safari) solo dejan usar el micrófono en sitios seguros (https o `localhost`). Por http, la Web Speech API se bloquea y el dictado no arranca.
+
+Por eso se configuró https sobre el dominio que también dio la organización:
+
+- **Certificado gratuito de Let's Encrypt**, emitido con `certbot` para `dwday-125148885.online` y con renovación automática.
+- **Solo para el dominio.** Let's Encrypt no emite certificados para una IP sola, así que la IP sigue en http. Por eso Nginx deja la IP sirviendo la app por http, igual que antes, y solo redirige a https el tráfico que llega por el nombre del dominio.
+- **Sin cambios en la app:** Node sigue en el puerto 3000 y Nginx se encarga de la conexión segura.
+- **Aviso dentro de la app:** si el dueño intenta dictar desde la IP, la app avisa y ofrece un link directo a la versión https.
+
+En resumen, la URL entregada sigue funcionando tal cual, y la versión https existe para que el micrófono funcione. Además protege el login del dueño.
+
 ```
 Navegador ──► Nginx (puertos 80 y 443, límite de 8 MB para imágenes)
                 └──► Node + Express en 127.0.0.1:3000 (PM2, proceso "app")
