@@ -67,6 +67,9 @@ const DEFAULT_DATA = {
     telefono: '',
     envio: 1500,
     horarios: 'Martes a domingo de 19:30 a 00:00. Lunes cerrado.',
+    abre: '19:30',
+    cierra: '00:00',
+    diasCerrados: [1], // 0 = domingo … 6 = sábado
     info: 'Envíos en un radio de 30 cuadras, demoran entre 30 y 45 minutos. Aceptamos efectivo, transferencia y Mercado Pago. No tenemos opciones sin TACC.',
     menu: [
       { producto: 'Pizza muzzarella', precio: 9000 },
@@ -246,15 +249,54 @@ function faltantesChat(p) {
   return f;
 }
 
+// ---------- Abierto / cerrado (hora de Argentina) ----------
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const aMin = (hhmm) => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(str(hhmm));
+  return m ? Math.min(24 * 60, Number(m[1]) * 60 + Number(m[2])) : null;
+};
+
+function estadoLocal(config, fecha = new Date()) {
+  const abre = aMin(config.abre), cierraRaw = aMin(config.cierra);
+  if (abre === null || cierraRaw === null) return { abierto: true, texto: 'horario no configurado', proximaApertura: '' };
+  const cerrados = new Set(Array.isArray(config.diasCerrados) ? config.diasCerrados.map(Number) : []);
+  // Si cierra a la medianoche o después (ej. 19:30 a 01:00), el turno cruza al día siguiente.
+  const cruza = cierraRaw <= abre;
+  const cierra = cruza ? cierraRaw + 24 * 60 : cierraRaw;
+
+  const partes = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Argentina/Buenos_Aires', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(fecha).map((p) => [p.type, p.value]));
+  const dia = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(partes.weekday);
+  const min = Number(partes.hour) * 60 + Number(partes.minute);
+  const ayer = (dia + 6) % 7;
+
+  const abiertoHoy = !cerrados.has(dia) && min >= abre && min < cierra;
+  const abiertoDesdeAyer = cruza && !cerrados.has(ayer) && min < cierraRaw;
+  if (abiertoHoy || abiertoDesdeAyer) {
+    return { abierto: true, texto: `abierto ahora, cierra a las ${config.cierra}`, proximaApertura: '' };
+  }
+  // Próxima apertura
+  for (let d = 0; d < 8; d++) {
+    const dd = (dia + d) % 7;
+    if (cerrados.has(dd)) continue;
+    if (d === 0 && min >= abre) continue;
+    const cuando = d === 0 ? 'hoy' : d === 1 ? 'mañana' : 'el ' + DIAS[dd];
+    return { abierto: false, texto: `cerrado, abre ${cuando} a las ${config.abre}`, proximaApertura: `${cuando} ${config.abre}` };
+  }
+  return { abierto: false, texto: 'cerrado', proximaApertura: '' };
+}
+
 function buildChatPrompt(config, pedidoActual) {
   const menu = config.menu.map((m) => `- ${m.producto}: $${m.precio}`).join('\n');
   const ahora = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', weekday: 'long', hour: '2-digit', minute: '2-digit' });
   const estado = pedidoActual
     ? JSON.stringify({ cliente: pedidoActual.cliente, items: pedidoActual.items.map((i) => ({ producto: i.producto, cantidad: i.cantidad, nota: i.nota })), entrega: pedidoActual.entrega, pago: pedidoActual.pago })
     : 'vacío (todavía no pidió nada)';
+  const est = estadoLocal(config);
   return `Sos el asistente virtual de "${config.negocio}", un negocio local de Argentina. Atendés a los clientes por chat las 24 hs, como lo haría el mejor empleado del local.
 
 AHORA ES: ${ahora} (hora de Argentina).
+ESTADO DEL LOCAL AHORA (calculado por el sistema, es la verdad): ${est.abierto ? 'ABIERTO' : 'CERRADO'} — ${est.texto}.
 
 PEDIDO ACTUAL (lo que ya se anotó; mantenelo y actualizalo con lo nuevo que diga el cliente):
 ${estado}
@@ -269,6 +311,8 @@ ${menu}
 
 Reglas:
 - Respondé corto (1 a 3 oraciones), cálido, en español rioplatense. Algún emoji está bien.
+- Si te preguntan si están abiertos, respondé según ESTADO DEL LOCAL AHORA. Nunca digas que está abierto si dice CERRADO.
+- Si el local está CERRADO y el cliente quiere pedir: avisale amablemente que ahora está cerrado, decile cuándo abre y ofrecé dejar el pedido PROGRAMADO para la apertura. Si acepta, seguí armándolo normal y poné en entrega.horario "${est.proximaApertura ? 'apertura ' + est.proximaApertura : 'a la apertura'}" (o el horario que pida el cliente, siempre dentro del horario de atención).
 - Usá SOLO la información de arriba. Si te preguntan algo que no está, decí que lo consultás con el local. Nunca inventes productos, precios ni promociones.
 - Si piden algo que no está en el menú, decilo y sugerí lo más parecido.
 - Ayudá a armar el pedido. En "pedido" devolvé SIEMPRE el estado ACTUAL y COMPLETO del pedido, acumulando todo lo de la conversación (si el cliente cambia algo, actualizalo).
@@ -300,7 +344,7 @@ function calcularTotales(p, config) {
 }
 
 // ---------- API ----------
-app.get('/api/config', (req, res) => res.json(data.config));
+app.get('/api/config', (req, res) => res.json({ ...data.config, estado: estadoLocal(data.config) }));
 
 app.put('/api/config', soloAdmin, (req, res) => {
   const b = req.body || {};
@@ -313,6 +357,9 @@ app.put('/api/config', soloAdmin, (req, res) => {
     telefono: str(b.telefono),
     envio: Math.max(0, Number(b.envio) || 0),
     horarios: str(b.horarios).slice(0, 500),
+    abre: aMin(b.abre) !== null ? str(b.abre) : '',
+    cierra: aMin(b.cierra) !== null ? str(b.cierra) : '',
+    diasCerrados: (Array.isArray(b.diasCerrados) ? b.diasCerrados : []).map(Number).filter((d) => d >= 0 && d <= 6),
     info: str(b.info).slice(0, 2000),
     menu
   };

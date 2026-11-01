@@ -25,6 +25,8 @@
     .hero { background: radial-gradient(900px 500px at 85% 0%, #1e293b 0%, var(--navy) 60%); color: #fff; padding: 64px 0 72px; }
     .hero .wrap { display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; }
     .hero .pill-live { display: inline-flex; gap: 8px; align-items: center; font-size: .85rem; font-weight: 700; color: #bbf7d0; background: rgba(34, 197, 94, .12); border: 1px solid rgba(34, 197, 94, .35); padding: 6px 12px; border-radius: 999px; }
+    .hero .pill-live.closed { color: #fed7aa; background: rgba(249, 115, 22, .12); border-color: rgba(249, 115, 22, .4); }
+    .hero .pill-live.closed .dot { background: #f97316; box-shadow: 0 0 0 3px rgba(249, 115, 22, .25); }
     .hero h1 { font-size: clamp(2.1rem, 4.5vw, 3.4rem); line-height: 1.05; letter-spacing: -.03em; margin: 18px 0 16px; font-weight: 800; }
     .hero h1 em { font-style: normal; color: #fb923c; }
     .hero p.sub { color: #cbd5e1; font-size: 1.12rem; max-width: 540px; margin: 0; }
@@ -169,7 +171,7 @@
   <header class="hero">
     <div class="wrap">
       <div>
-        <span class="pill-live"><i class="dot"></i>Pedidos online las 24 hs</span>
+        <span class="pill-live" id="estadoLocal"><i class="dot"></i>Pedidos online las 24 hs</span>
         <h1>Tu pedido en <em>un minuto</em>, sin esperar que te atiendan.</h1>
         <p class="sub">Escribile a nuestro asistente como le escribís a un amigo. Te arma el pedido, te dice el total al toque y lo manda directo a la cocina.</p>
         <div class="ctas">
@@ -281,6 +283,14 @@
       document.querySelectorAll('[data-negocio]').forEach((el) => (el.textContent = c.negocio));
       document.title = c.negocio + ' · Pedí online';
       $('#fHorario').textContent = c.horarios || 'Consultá horarios';
+      // Abierto / cerrado según el horario real (lo calcula el servidor con hora de Argentina)
+      if (c.estado) {
+        const e = c.estado;
+        $('#estadoLocal').classList.toggle('closed', !e.abierto);
+        $('#estadoLocal').innerHTML = '<i class="dot"></i>' + (e.abierto
+          ? 'Abierto ahora · pedí por chat'
+          : esc(e.texto.charAt(0).toUpperCase() + e.texto.slice(1)) + ' · podés dejar tu pedido programado');
+      }
       $('#fEnvio').textContent = money(c.envio);
       $('#iHorario').textContent = c.horarios || 'Consultanos por chat.';
       $('#iEnvio').textContent = `Costo de envío: ${money(c.envio)}. También podés retirar sin cargo.`;

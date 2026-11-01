@@ -28,7 +28,13 @@
           <h2 class="row" style="gap:8px"><span data-icon="store"></span>Tu negocio</h2>
           <label>Nombre del negocio</label><input id="negocio">
           <label>Costo de envío</label><input id="envio" type="number" min="0">
-          <label>Horarios</label><input id="horarios" placeholder="Ej: Martes a domingo de 19:30 a 00:00">
+          <div class="grid2">
+            <div><label>Abre</label><input id="abre" type="time"></div>
+            <div><label>Cierra</label><input id="cierra" type="time"></div>
+          </div>
+          <label>Días cerrado</label>
+          <div class="chips" id="dias"></div>
+          <label>Horarios (texto que ve el cliente)</label><input id="horarios" placeholder="Ej: Martes a domingo de 19:30 a 00:00">
           <label>Datos para el asistente del chat</label>
           <textarea id="info" style="min-height:120px" placeholder="Zonas de envío, demoras, formas de pago, aclaraciones…"></textarea>
           <div class="alert warn">
@@ -46,6 +52,18 @@
     renderShell('menu');
     hydrateIcons();
     let menu = [];
+    let diasCerrados = [];
+    const DIAS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+    function renderDias() {
+      $('#dias').innerHTML = DIAS.map((d, i) => `<button type="button" class="chip-btn ${diasCerrados.includes(i) ? 'green' : ''}" data-dia="${i}" aria-pressed="${diasCerrados.includes(i)}">${diasCerrados.includes(i) ? icon('x') : ''}${d}</button>`).join('');
+    }
+    $('#dias').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-dia]');
+      if (!b) return;
+      const d = Number(b.dataset.dia);
+      diasCerrados = diasCerrados.includes(d) ? diasCerrados.filter((x) => x !== d) : [...diasCerrados, d];
+      renderDias();
+    });
     function fila(m, i) {
       return `<tr>
         <td><input data-i="${i}" data-k="producto" value="${esc(m.producto)}" placeholder="Nombre del producto"></td>
@@ -75,7 +93,7 @@
     });
     $('#btnSave').addEventListener('click', async () => {
       try {
-        const cfg = await api('/api/config', { method: 'PUT', body: { negocio: $('#negocio').value, envio: $('#envio').value, horarios: $('#horarios').value, info: $('#info').value, menu } });
+        const cfg = await api('/api/config', { method: 'PUT', body: { negocio: $('#negocio').value, envio: $('#envio').value, horarios: $('#horarios').value, abre: $('#abre').value, cierra: $('#cierra').value, diasCerrados, info: $('#info').value, menu } });
         menu = cfg.menu;
         render();
         document.querySelectorAll('[data-negocio]').forEach((el) => (el.textContent = cfg.negocio));
@@ -86,6 +104,10 @@
       $('#negocio').value = cfg.negocio;
       $('#envio').value = cfg.envio;
       $('#horarios').value = cfg.horarios || '';
+      $('#abre').value = cfg.abre || '';
+      $('#cierra').value = cfg.cierra || '';
+      diasCerrados = cfg.diasCerrados || [];
+      renderDias();
       $('#info').value = cfg.info || '';
       menu = cfg.menu;
       render();
