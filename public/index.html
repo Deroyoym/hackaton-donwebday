@@ -116,6 +116,15 @@
     .cw-quick button { flex: 0 0 auto; background: #fff; color: var(--orange-2); border: 1px solid #fed7aa; border-radius: 999px; font-size: .82rem; padding: 6px 11px; }
     .cw-res { border-top: 1px solid var(--line); padding: 10px 14px; background: var(--card); }
     /* Ticket del pedido */
+    .trk { display: grid; gap: 8px; }
+    .trk-steps { display: flex; gap: 4px; }
+    .trk-step { flex: 1; text-align: center; font-size: .72rem; color: var(--muted); }
+    .trk-step::before { content: ""; display: block; height: 5px; border-radius: 3px; background: var(--line); margin-bottom: 4px; transition: background .4s; }
+    .trk-step.on { color: var(--text); font-weight: 700; }
+    .trk-step.on::before { background: var(--orange); }
+    .trk-step.done::before { background: #16a34a; }
+    .trk-msg { font-weight: 700; }
+    .trk.cancel .trk-msg { color: #dc2626; }
     .tk-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
     .tk-tit { display: flex; gap: 6px; align-items: center; font-family: var(--display); font-weight: 800; font-size: .95rem; }
     .tk-tit .i { color: var(--orange-2); width: 16px; height: 16px; }
@@ -445,6 +454,51 @@
       enviar(b.dataset.q);
     });
 
+    // Seguimiento del pedido: consulta el estado cada 5 s hasta que se entrega o cancela.
+    const PASOS = ['nuevo', 'preparando', 'listo', 'entregado'];
+    function textoEstado(e, tipo) {
+      return {
+        nuevo: '🕒 Recibido, el local ya lo vio',
+        preparando: '👨‍🍳 En preparación',
+        listo: tipo === 'envio' ? '🛵 ¡Listo! Sale para tu casa' : '✅ ¡Listo para retirar!',
+        entregado: '🎉 Entregado. ¡Que lo disfrutes!',
+        cancelado: 'El local canceló el pedido. Escribinos si tenés dudas.'
+      }[e] || e;
+    }
+    function seguirPedido(id) {
+      try { localStorage.setItem('pe_pedido', String(id)); } catch {}
+      const card = burbuja('', 'sys', '');
+      let ultimo = '';
+      const pintar = (r) => {
+        const i = PASOS.indexOf(r.estado);
+        card.innerHTML = `<div class="trk ${r.estado === 'cancelado' ? 'cancel' : ''}">
+          <div class="row" style="justify-content:space-between"><b>Pedido #${r.id}</b><span class="tk-n">en vivo</span></div>
+          <div class="trk-msg">${esc(textoEstado(r.estado, r.entrega))}</div>
+          ${r.estado === 'cancelado' ? '' : `<div class="trk-steps">${['Recibido', 'Preparando', 'Listo', 'Entregado'].map((t, k) => `<div class="trk-step ${k < i ? 'done' : ''} ${k === i ? 'on' : ''}">${t}</div>`).join('')}</div>`}
+        </div>`;
+        $('#chat').scrollTop = $('#chat').scrollHeight;
+      };
+      const tick = async () => {
+        try {
+          const r = await api('/api/pedidos/' + id + '/estado');
+          if (r.estado !== ultimo) { ultimo = r.estado; pintar(r); }
+          if (r.estado === 'entregado' || r.estado === 'cancelado') {
+            try { localStorage.removeItem('pe_pedido'); } catch {}
+            return;
+          }
+        } catch (e) {
+          if (/no encontrado/i.test(e.message)) { try { localStorage.removeItem('pe_pedido'); } catch {} return; }
+        }
+        setTimeout(tick, 5000);
+      };
+      tick();
+    }
+    // Si recarga la página con un pedido en curso, retoma el seguimiento.
+    try {
+      const pend = localStorage.getItem('pe_pedido');
+      if (pend) { abrirChat(); seguirPedido(Number(pend)); }
+    } catch {}
+
     $('#btnConfirmar').addEventListener('click', async () => {
       const btn = $('#btnConfirmar');
       if (!estado?.listo) {
@@ -465,7 +519,8 @@
             texto_original: mensajes.map((m) => (m.role === 'user' ? 'Cliente: ' : 'Asistente: ') + m.content).join('\n')
           }
         });
-        burbuja('', 'sys', `${icon('checkCircle')} ¡Pedido #${guardado.id} confirmado! Total ${money(guardado.total)}.<br>Ya le llegó al local. Te avisamos por WhatsApp cuando esté listo.`);
+        burbuja('', 'sys', `${icon('checkCircle')} ¡Pedido #${guardado.id} confirmado! Total ${money(guardado.total)}.<br>Ya le llegó al local. Seguilo acá abajo, se actualiza solo.`);
+        seguirPedido(guardado.id);
         mensajes = [];
         estado = null;
         mostrarResumen();

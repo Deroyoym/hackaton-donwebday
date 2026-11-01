@@ -468,6 +468,12 @@ app.post('/api/pedidos', (req, res) => {
 });
 
 const ESTADOS = ['nuevo', 'preparando', 'listo', 'entregado', 'cancelado'];
+// Seguimiento público para el cliente: solo número, estado y tipo de entrega (sin datos personales).
+app.get('/api/pedidos/:id/estado', (req, res) => {
+  const p = data.pedidos.find((x) => x.id === Number(req.params.id));
+  if (!p) return res.status(404).json({ error: 'Pedido no encontrado.' });
+  res.json({ id: p.id, estado: p.estado, entrega: p.entrega?.tipo || '' });
+});
 app.patch('/api/pedidos/:id', soloAdmin, (req, res) => {
   const p = data.pedidos.find((x) => x.id === Number(req.params.id));
   if (!p) return res.status(404).json({ error: 'Pedido no encontrado.' });
