@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pedido Express</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Pedido Express <span id="negocio"></span></h1>
+    <nav>
+      <a href="/" class="active">Nuevo pedido</a>
+      <a href="/panel.html">Panel</a>
+      <a href="/config.html">Menú</a>
+    </nav>
+  </header>
+  <main>
+    <section class="card">
+      <h2>1. Pegá el chat de WhatsApp o anotá la llamada</h2>
+      <p class="muted">La IA lo convierte en un pedido con total, detecta qué falta preguntar y te arma la respuesta.</p>
+      <div class="examples">
+        <span class="muted">Ejemplos:</span>
+        <button class="sec" data-ej="0">WhatsApp desordenado</button>
+        <button class="sec" data-ej="1">Llamada telefónica</button>
+        <button class="sec" data-ej="2">Cliente que cambia de idea</button>
+      </div>
+      <textarea id="texto" placeholder="Ej: hola! mandame 2 muzza y una coca, soy Juan, retiro 21hs"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="btnProcesar">Procesar con IA</button>
+        <button id="btnLimpiar" class="sec">Limpiar</button>
+      </div>
+      <div id="error" class="error hidden"></div>
+    </section>
+
+    <section id="resultado" class="card hidden">
+      <h2>2. Revisá el pedido</h2>
+      <div id="alertas"></div>
+      <div class="grid2">
+        <div><label>Cliente</label><input id="cNombre"></div>
+        <div><label>Teléfono</label><input id="cTel" inputmode="tel"></div>
+        <div>
+          <label>Entrega</label>
+          <select id="eTipo">
+            <option value="">Sin definir</option>
+            <option value="retiro">Retira en el local</option>
+            <option value="envio">Envío a domicilio</option>
+          </select>
+        </div>
+        <div><label>Horario</label><input id="eHorario"></div>
+        <div><label>Dirección</label><input id="eDir"></div>
+        <div><label>Pago</label><input id="pago"></div>
+      </div>
+      <table style="margin-top:12px">
+        <thead><tr><th>Producto</th><th class="num">Cant.</th><th class="num">Precio</th><th class="num">Subtotal</th><th></th></tr></thead>
+        <tbody id="items"></tbody>
+      </table>
+      <div class="row" style="margin-top:8px">
+        <select id="agregarProd" style="flex:1;min-width:180px"></select>
+        <button id="btnAgregar" class="sec small">+ Agregar</button>
+      </div>
+      <div id="totales" class="total"></div>
+
+      <h2 style="margin-top:18px">3. Respuesta para el cliente</h2>
+      <textarea id="respuesta" style="min-height:110px"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button id="btnCopiar" class="sec">Copiar</button>
+        <a id="btnWa" class="btn sec" target="_blank" rel="noopener">Abrir WhatsApp</a>
+        <button id="btnGuardar">Guardar pedido</button>
+      </div>
+      <div id="guardado" class="ok hidden"></div>
+    </section>
+  </main>
+  <script src="common.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

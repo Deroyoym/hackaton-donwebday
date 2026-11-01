@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Panel de pedidos</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Pedido Express <span id="negocio"></span></h1>
+    <nav>
+      <a href="/">Nuevo pedido</a>
+      <a href="/panel.html" class="active">Panel</a>
+      <a href="/config.html">Menú</a>
+    </nav>
+  </header>
+  <main>
+    <div class="stats">
+      <div class="stat"><b id="sPend">0</b><span>Pendientes</span></div>
+      <div class="stat"><b id="sCant">0</b><span>Pedidos hoy</span></div>
+      <div class="stat"><b id="sTotal">$0</b><span>Vendido hoy</span></div>
+    </div>
+    <div class="row" style="margin-bottom:12px">
+      <label style="margin:0">Mostrar:</label>
+      <select id="filtro" style="width:auto">
+        <option value="activos">Activos</option>
+        <option value="todos">Todos</option>
+      </select>
+    </div>
+    <div id="error" class="error hidden"></div>
+    <div id="lista"><p class="muted">Cargando…</p></div>
+  </main>
+  <script src="common.js"></script>
+  <script>
+    const SIGUIENTE = { nuevo: 'preparando', preparando: 'listo', listo: 'entregado' };
+    const LABEL = { preparando: 'Empezar a preparar', listo: 'Marcar listo', entregado: 'Entregado' };
+    let pedidos = [];
+
+    async function cargar() {
+      try {
+        const [cfg, ps] = await Promise.all([api('/api/config'), api('/api/pedidos')]);
+        $('#negocio').textContent = '· ' + cfg.negocio;
+        pedidos = ps;
+        $('#error').classList.add('hidden');
+        render();
+      } catch (e) {
+        $('#error').textContent = e.message;
+        $('#error').classList.remove('hidden');
+      }
+    }
+
+    function render() {
+      const hoy = new Date().toDateString();
+      const deHoy = pedidos.filter((p) => new Date(p.creado).toDateString() === hoy && p.estado !== 'cancelado');
+      $('#sPend').textContent = pedidos.filter((p) => ['nuevo', 'preparando', 'listo'].includes(p.estado)).length;
+      $('#sCant').textContent = deHoy.length;
+      $('#sTotal').textContent = money(deHoy.reduce((s, p) => s + p.total, 0));
+
+      const lista = $('#filtro').value === 'todos' ? pedidos : pedidos.filter((p) => !['entregado', 'cancelado'].includes(p.estado));
+      if (!lista.length) {
+        $('#lista').innerHTML = '<div class="card muted">No hay pedidos todavía. <a href="/">Cargá uno</a>.</div>';
+        return;
+      }
+      $('#lista').innerHTML = lista.map((p) => {
+        const hora = new Date(p.creado).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+        const entrega = p.entrega.tipo === 'envio' ? `🛵 Envío${p.entrega.direccion ? ' a ' + esc(p.entrega.direccion) : ''}` : p.entrega.tipo === 'retiro' ? '🏪 Retira' : 'Entrega sin definir';
+        const sig = SIGUIENTE[p.estado];
+        const aviso = `Hola${p.cliente.nombre ? ' ' + p.cliente.nombre : ''}! Tu pedido #${p.id} de ${money(p.total)} ya está listo${p.entrega.tipo === 'envio' ? ' y sale para tu casa 🛵' : ' para retirar 🙌'}`;
+        return `
+        <div class="card pedido ${p.estado}">
+          <div class="row" style="justify-content:space-between">
+            <strong>#${p.id} · ${esc(p.cliente.nombre || 'Sin nombre')}</strong>
+            <span class="badge">${p.estado}</span>
+          </div>
+          <div class="muted">${hora} · ${entrega}${p.entrega.horario ? ' · ' + esc(p.entrega.horario) : ''}${p.pago ? ' · ' + esc(p.pago) : ''}</div>
+          <ul class="items">${p.items.map((i) => `<li>${i.cantidad} × ${esc(i.producto)}${i.nota ? ` <span class="muted">(${esc(i.nota)})</span>` : ''}</li>`).join('')}</ul>
+          ${p.faltantes.length ? `<div class="chips">${p.faltantes.map((f) => `<span class="chip warn">${esc(f)}</span>`).join('')}</div>` : ''}
+          <div class="row" style="justify-content:space-between">
+            <strong>${money(p.total)}</strong>
+            <div class="row">
+              ${p.estado === 'listo' ? `<a class="btn sec small" style="padding:6px 10px;font-size:.85rem" target="_blank" rel="noopener" href="${waLink(p.cliente.telefono, aviso)}">Avisar por WhatsApp</a>` : ''}
+              ${['nuevo', 'preparando'].includes(p.estado) ? `<button class="sec small" data-id="${p.id}" data-estado="cancelado">Cancelar</button>` : ''}
+              ${sig ? `<button class="small" data-id="${p.id}" data-estado="${sig}">${LABEL[sig]}</button>` : ''}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    $('#lista').addEventListener('click', async (e) => {
+      const b = e.target.closest('button[data-id]');
+      if (!b) return;
+      b.disabled = true;
+      try {
+        await api(`/api/pedidos/${b.dataset.id}`, { method: 'PATCH', body: { estado: b.dataset.estado } });
+        await cargar();
+      } catch (err) {
+        $('#error').textContent = err.message;
+        $('#error').classList.remove('hidden');
+        b.disabled = false;
+      }
+    });
+    $('#filtro').addEventListener('change', render);
+    cargar();
+    setInterval(cargar, 10000);
+  </script>
+</body>
+</html>

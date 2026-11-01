@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Menú del negocio</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Pedido Express <span id="negocioH"></span></h1>
+    <nav>
+      <a href="/">Nuevo pedido</a>
+      <a href="/panel.html">Panel</a>
+      <a href="/config.html" class="active">Menú</a>
+    </nav>
+  </header>
+  <main>
+    <section class="card">
+      <h2>Tu negocio</h2>
+      <p class="muted">La IA usa este menú y estos precios para armar los pedidos.</p>
+      <div class="grid2">
+        <div><label>Nombre del negocio</label><input id="negocio"></div>
+        <div><label>Costo de envío</label><input id="envio" type="number" min="0"></div>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Menú</h2>
+      <table>
+        <thead><tr><th>Producto</th><th class="num">Precio</th><th></th></tr></thead>
+        <tbody id="menu"></tbody>
+      </table>
+      <div class="row" style="margin-top:10px">
+        <button id="btnAdd" class="sec">+ Agregar producto</button>
+        <button id="btnSave">Guardar cambios</button>
+      </div>
+      <div id="msg" class="hidden"></div>
+    </section>
+  </main>
+  <script src="common.js"></script>
+  <script>
+    let menu = [];
+    function fila(m, i) {
+      return `<tr>
+        <td><input data-i="${i}" data-k="producto" value="${esc(m.producto)}"></td>
+        <td class="num"><input data-i="${i}" data-k="precio" type="number" min="0" value="${m.precio}" style="width:110px;text-align:right"></td>
+        <td class="num"><button class="sec small" data-del="${i}">✕</button></td>
+      </tr>`;
+    }
+    function render() { $('#menu').innerHTML = menu.map(fila).join(''); }
+    function msg(t, ok) {
+      $('#msg').className = ok ? 'ok' : 'error';
+      $('#msg').textContent = t;
+    }
+    $('#menu').addEventListener('input', (e) => {
+      const { i, k } = e.target.dataset;
+      if (i !== undefined) menu[i][k] = k === 'precio' ? Number(e.target.value) : e.target.value;
+    });
+    $('#menu').addEventListener('click', (e) => {
+      if (e.target.dataset.del === undefined) return;
+      menu.splice(Number(e.target.dataset.del), 1);
+      render();
+    });
+    $('#btnAdd').addEventListener('click', () => {
+      menu.push({ producto: '', precio: 0 });
+      render();
+      $('#menu').lastElementChild.querySelector('input').focus();
+    });
+    $('#btnSave').addEventListener('click', async () => {
+      try {
+        const cfg = await api('/api/config', { method: 'PUT', body: { negocio: $('#negocio').value, envio: $('#envio').value, menu } });
+        menu = cfg.menu;
+        render();
+        $('#negocioH').textContent = '· ' + cfg.negocio;
+        msg('Guardado ✔', true);
+      } catch (e) { msg(e.message, false); }
+    });
+    api('/api/config').then((cfg) => {
+      $('#negocio').value = cfg.negocio;
+      $('#negocioH').textContent = '· ' + cfg.negocio;
+      $('#envio').value = cfg.envio;
+      menu = cfg.menu;
+      render();
+    }).catch((e) => msg(e.message, false));
+  </script>
+</body>
+</html>
