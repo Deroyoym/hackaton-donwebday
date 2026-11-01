@@ -122,7 +122,9 @@ $('#btnDictar').addEventListener('click', () => {
   if (!SR) return showError('Tu navegador no permite dictado. Probá con Chrome.');
   // Los navegadores solo dejan usar el micrófono en sitios https (o localhost).
   if (!window.isSecureContext) {
-    const https = 'https://' + location.host + location.pathname;
+    // Por IP el certificado no es válido: se usa el dominio del servidor.
+    const host = /^d+.d+.d+.d+/.test(location.hostname) ? 'dwday-125148885.online' : location.host;
+    const https = 'https://' + host + location.pathname;
     $('#error').innerHTML = `El dictado necesita una conexión segura. <a href="${https}">Abrí la versión https</a>.`;
     $('#error').classList.remove('hidden');
     return;
@@ -188,6 +190,7 @@ function iniciarDictado() {
 
 // ---------- Procesar con IA ----------
 async function procesar() {
+  if ($('#btnProcesar').disabled) return; // ya hay una llamada en curso
   const texto = $('#texto').value.trim();
   if (!texto && !imagen) return showError('Subí una captura, dictá o pegá el mensaje del cliente.');
   if (rec) rec.stop();
@@ -313,6 +316,7 @@ $('#btnCopiar').addEventListener('click', async () => {
 $('#btnGuardar').addEventListener('click', async () => {
   const btn = $('#btnGuardar');
   if (!pedido.items.length) return showError('La comanda no tiene productos.');
+  if (pedido.guardado) return showError('Esta comanda ya se mandó a cocina.');
   btn.disabled = true;
   try {
     const p = await api('/api/pedidos', {
@@ -329,6 +333,7 @@ $('#btnGuardar').addEventListener('click', async () => {
     });
     $('#guardado').innerHTML = `${icon('checkCircle')} Comanda <b class="mono">#${p.id}</b> enviada a cocina (${money(p.total)}). <a href="/admin/panel.html">Ver comandas</a>`;
     $('#guardado').classList.remove('hidden');
+    pedido.guardado = true; // evita duplicarla con un segundo toque
     actualizarContador();
   } catch (e) {
     $('#guardado').classList.add('hidden');

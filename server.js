@@ -498,4 +498,10 @@ app.patch('/api/pedidos/:id', soloAdmin, (req, res) => {
 
 app.get('/api/health', (req, res) => res.json({ ok: true, ia: !!OPENAI_API_KEY, modelo: OPENAI_MODEL }));
 
+// Errores (ej. JSON mal formado): responder en JSON, sin mostrar detalles internos.
+app.use((err, req, res, next) => {
+  if (err.type === 'entity.too.large') return res.status(413).json({ error: 'El archivo es muy grande.' });
+  res.status(err.status || 500).json({ error: err.status === 400 ? 'Datos inválidos.' : 'Error inesperado.' });
+});
+
 app.listen(PORT, () => console.log(`Pedido Express en http://localhost:${PORT}`));
