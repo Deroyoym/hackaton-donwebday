@@ -412,6 +412,24 @@
     async function enviar(texto) {
       texto = texto.trim();
       if (!texto || enviando) return;
+      // Seguimiento desde cualquier dispositivo: "pedido #2", "seguimiento 2"… se resuelve sin la IA.
+      const quiereSeguir = /seguimiento|seguir (mi|el) pedido|d[oó]nde est[aá] mi pedido|c[oó]mo va mi pedido|ya tengo un pedido|tengo (un|el) pedido #|estado de mi pedido/i.test(texto);
+      const num = texto.match(/#\s*(\d{1,6})\b/) || (quiereSeguir && texto.match(/\b(\d{1,6})\b/));
+      if (num || quiereSeguir) {
+        const id = Number(num?.[1]);
+        if (id || (quiereSeguir && !estado?.pedido?.items?.length)) {
+          burbuja(texto, 'user');
+          $('#quick').classList.add('hidden');
+          if (!id) { burbuja('¡Dale! Pasame el número de pedido (ej: #2) y te muestro cómo va.', 'bot'); return; }
+          try {
+            await api('/api/pedidos/' + id + '/estado');
+            seguirPedido(id);
+          } catch (e) {
+            burbuja(`No encontré el pedido #${id}. Revisá el número que te dimos al confirmar.`, 'bot');
+          }
+          return;
+        }
+      }
       enviando = true;
       $('#btnEnviar').disabled = true;
       $('#quick').classList.add('hidden');
