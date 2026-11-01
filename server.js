@@ -170,7 +170,7 @@ function normalizarPedido(raw, config) {
     respuesta_sugerida: str(raw?.respuesta_sugerida)
   };
   calcularTotales(pedido, config);
-  pedido.respuesta_sugerida = pedido.respuesta_sugerida.replace(/\$?\s?\{\s*TOTAL\s*\}/gi, () => '$' + pedido.total.toLocaleString('es-AR'));
+  pedido.respuesta_sugerida = pedido.respuesta_sugerida.replace(/(?:\$\s?)?\{\s*TOTAL\s*\}/gi, () => '$' + pedido.total.toLocaleString('es-AR'));
   return pedido;
 }
 
