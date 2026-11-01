@@ -232,7 +232,7 @@
       <div class="steps">
         <div class="step"><span class="ic" data-icon="chat"></span><span class="n">01</span><b>Escribí lo que querés</b><p>"2 muzzas y una coca para las 21". También podés preguntar horarios, envíos o formas de pago.</p></div>
         <div class="step"><span class="ic" data-icon="check"></span><span class="n">02</span><b>Confirmá con un toque</b><p>Ves el resumen con el total exacto y lo confirmás. El pedido le llega al local en el momento.</p></div>
-        <div class="step"><span class="ic" data-icon="bike"></span><span class="n">03</span><b>Retirá o recibilo</b><p>Te avisamos por WhatsApp cuando está listo para retirar o sale para tu casa.</p></div>
+        <div class="step"><span class="ic" data-icon="bike"></span><span class="n">03</span><b>Retirá o recibilo</b><p>Seguís el estado en vivo desde el chat: ves cuándo está listo para retirar o sale para tu casa.</p></div>
       </div>
     </div>
   </section>
@@ -519,7 +519,7 @@
             texto_original: mensajes.map((m) => (m.role === 'user' ? 'Cliente: ' : 'Asistente: ') + m.content).join('\n')
           }
         });
-        burbuja('', 'sys', `${icon('checkCircle')} ¡Pedido #${guardado.id} confirmado! Total ${money(guardado.total)}.<br>Ya le llegó al local. Seguilo acá abajo, se actualiza solo.`);
+        burbuja('', 'sys', `${icon('checkCircle')} ¡Pedido #${guardado.id} confirmado! Total ${money(guardado.total)}.<br>${guardado.entrega?.horario ? 'Programado para: ' + esc(guardado.entrega.horario) + '. ' : ''}Ya le llegó al local. Seguilo acá abajo, se actualiza solo.`);
         seguirPedido(guardado.id);
         mensajes = [];
         estado = null;

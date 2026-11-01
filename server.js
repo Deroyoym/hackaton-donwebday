@@ -313,7 +313,7 @@ Reglas:
 - Respondé MUY corto: máximo 2 oraciones (unas 30 palabras), cálido, en español rioplatense, como un mensaje de WhatsApp. Como mucho un emoji.
 - El cliente ve en pantalla un ticket con los productos, precios y total. NO enumeres el pedido ni repitas lo que ya anotaste: confirmá el cambio en pocas palabras (ej: "¡Sumé la coca! 🙌") y preguntá lo siguiente que falte.
 - Si te preguntan si están abiertos, respondé según ESTADO DEL LOCAL AHORA. Nunca digas que está abierto si dice CERRADO.
-- Si el local está CERRADO y el cliente quiere pedir: avisale amablemente que ahora está cerrado, decile cuándo abre y ofrecé dejar el pedido PROGRAMADO para la apertura. Igual anotá en "pedido" desde el primer mensaje todos los productos que pida. Si acepta, seguí armándolo normal y poné en entrega.horario "${est.proximaApertura ? 'apertura ' + est.proximaApertura : 'a la apertura'}" (o el horario que pida el cliente, siempre dentro del horario de atención).
+- Si el local está CERRADO y el cliente quiere pedir: avisale amablemente que ahora está cerrado, decile cuándo abre y ofrecé dejar el pedido PROGRAMADO para la apertura. Igual anotá en "pedido" desde el primer mensaje todos los productos que pida. Si acepta, seguí armándolo normal y poné en entrega.horario "${est.proximaApertura ? 'apertura ' + est.proximaApertura : 'apertura'}" (o el horario que pida el cliente, siempre dentro del horario de atención).
 - Usá SOLO la información de arriba. Si te preguntan algo que no está, decí que lo consultás con el local. Nunca inventes productos, precios ni promociones.
 - Si piden algo que no está en el menú, decilo y sugerí lo más parecido.
 - Ayudá a armar el pedido. En "pedido" devolvé SIEMPRE el estado ACTUAL y COMPLETO del pedido, acumulando todo lo de la conversación (si el cliente cambia algo, actualizalo).
@@ -423,8 +423,21 @@ app.post('/api/chat', async (req, res) => {
     const faltantes = faltantesChat(pedido);
     const listo = faltantes.length === 0;
     let respuesta = ponerTotal(raw?.respuesta, pedido.total) || 'Perdón, no te entendí bien. ¿Me lo repetís?';
+    const local = estadoLocal(data.config);
+    if (listo && !local.abierto && !pedido.entrega.horario) {
+      // Local cerrado: el pedido completo queda programado para la apertura.
+      pedido.entrega.horario = local.proximaApertura ? 'apertura ' + local.proximaApertura : 'apertura';
+    }
     if (listo && !/confirmar/i.test(respuesta)) {
-      respuesta += `\n\n👉 Total ${'$' + pedido.total.toLocaleString('es-AR')}. Tocá "Confirmar pedido" para enviarlo al local.`;
+      const total = '$' + pedido.total.toLocaleString('es-AR');
+      if (!local.abierto) {
+        // Reemplaza preguntas tipo "¿lo dejamos programado?" para no mezclar pregunta y orden.
+        respuesta = `¡Listo! Ahora estamos cerrados, así que queda programado (${pedido.entrega.horario}). Total ${total}: tocá "Confirmar pedido" y lo dejamos agendado.`;
+      } else {
+        respuesta += respuesta.includes(total)
+          ? '\n\n👉 Tocá "Confirmar pedido" para enviarlo al local.'
+          : `\n\n👉 Total ${total}. Tocá "Confirmar pedido" para enviarlo al local.`;
+      }
     }
     res.json({ respuesta, pedido, faltantes, listo });
   } catch (e) {
