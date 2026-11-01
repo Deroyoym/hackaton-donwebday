@@ -95,6 +95,13 @@ if (SR) {
   $('#btnDictar').classList.remove('hidden');
   $('#btnDictar').addEventListener('click', () => {
     if (rec) { rec.stop(); return; }
+    // Los navegadores solo dejan usar el micrófono en sitios https (o localhost).
+    if (!window.isSecureContext) {
+      const https = 'https://' + location.host + location.pathname;
+      $('#error').innerHTML = `El dictado necesita una conexión segura. <a href="${https}">Abrí la versión https</a>.`;
+      $('#error').classList.remove('hidden');
+      return;
+    }
     rec = new SR();
     rec.lang = 'es-AR';
     rec.continuous = true;
