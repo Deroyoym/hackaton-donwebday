@@ -127,25 +127,64 @@ $('#btnDictar').addEventListener('click', () => {
     $('#error').classList.remove('hidden');
     return;
   }
-  rec = new SR();
-  rec.lang = 'es-AR';
-  rec.continuous = true;
-  rec.interimResults = false;
+  iniciarDictado();
+});
+
+// Chrome corta el reconocimiento tras unos segundos de silencio aunque sea "continuous".
+// Mientras el usuario no toque "terminar", lo volvemos a arrancar solo.
+function iniciarDictado() {
   const base = $('#texto').value;
   let dicho = '';
-  rec.onresult = (ev) => {
-    for (let i = ev.resultIndex; i < ev.results.length; i++) {
-      if (ev.results[i].isFinal) dicho += ev.results[i][0].transcript + ' ';
-    }
-    $('#texto').value = (base ? base + '\n' : '') + dicho.trim();
-    contarCaracteres();
+  let seguir = true;
+  const ERRORES = {
+    'not-allowed': 'Permití el uso del micrófono para dictar (ícono del candado en la barra de direcciones).',
+    'service-not-allowed': 'El navegador bloqueó el dictado. Probá con Google Chrome.',
+    'audio-capture': 'No se encontró un micrófono conectado.',
+    network: 'El dictado necesita internet y Google Chrome (otros navegadores no lo soportan bien).'
   };
-  rec.onerror = (ev) => showError(ev.error === 'not-allowed' ? 'Permití el uso del micrófono para dictar.' : 'No se pudo usar el micrófono (' + ev.error + ').');
-  rec.onend = () => { rec = null; estadoDictado(false); };
-  rec.start();
+
+  const arrancar = () => {
+    const r = new SR();
+    r.lang = 'es-AR';
+    r.continuous = true;
+    r.interimResults = true; // muestra el texto mientras hablás
+    r.onresult = (ev) => {
+      let parcial = '';
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        if (ev.results[i].isFinal) dicho += ev.results[i][0].transcript.trim() + ' ';
+        else parcial += ev.results[i][0].transcript;
+      }
+      $('#texto').value = (base ? base + '\n' : '') + (dicho + parcial).trim();
+      contarCaracteres();
+    };
+    r.onerror = (ev) => {
+      if (ev.error === 'no-speech' || ev.error === 'aborted') return; // silencio: seguimos escuchando
+      seguir = false;
+      showError(ERRORES[ev.error] || 'No se pudo usar el micrófono (' + ev.error + ').');
+    };
+    r.onend = () => {
+      if (seguir) {
+        try { arrancar(); return; } catch {}
+      }
+      rec = null;
+      estadoDictado(false);
+    };
+    r.start();
+    actual = r;
+  };
+
+  let actual = null;
+  // "rec" es el control global: el botón "terminar" llama a rec.stop() y corta los reinicios.
+  rec = { stop: () => { seguir = false; try { actual && actual.stop(); } catch {} } };
+  try {
+    arrancar();
+  } catch (e) {
+    rec = null;
+    return showError('No se pudo iniciar el dictado: ' + e.message);
+  }
   showError('');
   estadoDictado(true);
-});
+}
 
 // ---------- Procesar con IA ----------
 async function procesar() {
