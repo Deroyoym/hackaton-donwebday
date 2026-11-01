@@ -3,51 +3,54 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Menú del negocio</title>
+  <meta name="theme-color" content="#0f172a">
+  <title>Menú y precios</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>Pedido Express <span id="negocioH"></span></h1>
-    <nav>
-      <a href="/">Nuevo pedido</a>
-      <a href="/panel.html">Panel</a>
-      <a href="/config.html" class="active">Menú</a>
-    </nav>
-  </header>
   <main>
-    <section class="card">
-      <h2>Tu negocio</h2>
-      <p class="muted">La IA usa este menú y estos precios para armar los pedidos.</p>
-      <div class="grid2">
-        <div><label>Nombre del negocio</label><input id="negocio"></div>
-        <div><label>Costo de envío</label><input id="envio" type="number" min="0"></div>
-      </div>
-      <label>Horarios</label><input id="horarios" placeholder="Ej: Martes a domingo de 19:30 a 00:00">
-      <label>Otros datos para el asistente (zonas de envío, demoras, formas de pago, aclaraciones)</label>
-      <textarea id="info" style="min-height:90px"></textarea>
-    </section>
-    <section class="card">
-      <h2>Menú</h2>
-      <table>
-        <thead><tr><th>Producto</th><th class="num">Precio</th><th></th></tr></thead>
-        <tbody id="menu"></tbody>
-      </table>
-      <div class="row" style="margin-top:10px">
-        <button id="btnAdd" class="sec">+ Agregar producto</button>
-        <button id="btnSave">Guardar cambios</button>
-      </div>
-      <div id="msg" class="hidden"></div>
-    </section>
+    <div class="layout">
+      <section class="card">
+        <span class="tag">Menú y precios</span>
+        <h1 class="title">Lo que vendés</h1>
+        <p class="lead">La IA usa exactamente estos productos y precios para armar las comandas y calcular los totales.</p>
+        <table style="margin-top:18px">
+          <thead><tr><th>Producto</th><th class="num">Precio</th><th></th></tr></thead>
+          <tbody id="menu"></tbody>
+        </table>
+        <div class="row" style="margin-top:14px">
+          <button id="btnAdd" type="button"><span data-icon="plus"></span>Agregar producto</button>
+        </div>
+      </section>
+
+      <aside class="side">
+        <section class="card">
+          <h2 class="row" style="gap:8px"><span data-icon="store"></span>Tu negocio</h2>
+          <label>Nombre del negocio</label><input id="negocio">
+          <label>Costo de envío</label><input id="envio" type="number" min="0">
+          <label>Horarios</label><input id="horarios" placeholder="Ej: Martes a domingo de 19:30 a 00:00">
+          <label>Datos para el asistente del chat</label>
+          <textarea id="info" style="min-height:120px" placeholder="Zonas de envío, demoras, formas de pago, aclaraciones…"></textarea>
+          <div class="alert warn">
+            <span data-icon="bot"></span>
+            <div>El chat de clientes responde <b style="display:inline">solo</b> con esta información. Si algo no está acá, dice que lo consulta con el local.</div>
+          </div>
+          <button id="btnSave" class="btn-primary btn-lg btn-block" style="margin-top:16px" type="button"><span data-icon="save"></span>Guardar cambios</button>
+          <div id="msg" class="hidden"></div>
+        </section>
+      </aside>
+    </div>
   </main>
   <script src="common.js"></script>
   <script>
+    renderShell('menu');
+    hydrateIcons();
     let menu = [];
     function fila(m, i) {
       return `<tr>
-        <td><input data-i="${i}" data-k="producto" value="${esc(m.producto)}"></td>
-        <td class="num"><input data-i="${i}" data-k="precio" type="number" min="0" value="${m.precio}" style="width:110px;text-align:right"></td>
-        <td class="num"><button class="sec small" data-del="${i}">✕</button></td>
+        <td><input data-i="${i}" data-k="producto" value="${esc(m.producto)}" placeholder="Nombre del producto"></td>
+        <td class="num"><input data-i="${i}" data-k="precio" type="number" min="0" value="${m.precio}" class="mono" style="width:120px;text-align:right"></td>
+        <td class="num"><button class="icon-btn btn-ghost" data-del="${i}" aria-label="Quitar" type="button">${icon('trash')}</button></td>
       </tr>`;
     }
     function render() { $('#menu').innerHTML = menu.map(fila).join(''); }
@@ -60,8 +63,9 @@
       if (i !== undefined) menu[i][k] = k === 'precio' ? Number(e.target.value) : e.target.value;
     });
     $('#menu').addEventListener('click', (e) => {
-      if (e.target.dataset.del === undefined) return;
-      menu.splice(Number(e.target.dataset.del), 1);
+      const b = e.target.closest('[data-del]');
+      if (!b) return;
+      menu.splice(Number(b.dataset.del), 1);
       render();
     });
     $('#btnAdd').addEventListener('click', () => {
@@ -74,13 +78,12 @@
         const cfg = await api('/api/config', { method: 'PUT', body: { negocio: $('#negocio').value, envio: $('#envio').value, horarios: $('#horarios').value, info: $('#info').value, menu } });
         menu = cfg.menu;
         render();
-        $('#negocioH').textContent = '· ' + cfg.negocio;
-        msg('Guardado ✔', true);
+        document.querySelectorAll('[data-negocio]').forEach((el) => (el.textContent = cfg.negocio));
+        msg('Cambios guardados. La IA ya usa el menú nuevo.', true);
       } catch (e) { msg(e.message, false); }
     });
     api('/api/config').then((cfg) => {
       $('#negocio').value = cfg.negocio;
-      $('#negocioH').textContent = '· ' + cfg.negocio;
       $('#envio').value = cfg.envio;
       $('#horarios').value = cfg.horarios || '';
       $('#info').value = cfg.info || '';

@@ -5,46 +5,64 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
   <title>Hacé tu pedido</title>
   <link rel="stylesheet" href="style.css">
+  <meta name="theme-color" content="#0f172a">
   <style>
     html, body { height: 100%; }
-    body { display: flex; flex-direction: column; background: #ece5dd; }
-    header { flex: 0 0 auto; }
-    header .sub { font-size: .8rem; opacity: .85; }
-    #chat { flex: 1 1 auto; overflow-y: auto; padding: 12px; max-width: 720px; width: 100%; margin: 0 auto; }
-    .msg { max-width: 82%; padding: 8px 12px; border-radius: 10px; margin: 6px 0; white-space: pre-wrap; word-wrap: break-word; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
-    .msg.bot { background: #fff; border-top-left-radius: 2px; }
-    .msg.user { background: #dcf8c6; margin-left: auto; border-top-right-radius: 2px; }
-    .msg.sys { background: #e1f5e8; color: var(--accent-dark); margin: 10px auto; text-align: center; font-weight: 600; }
-    .typing span { display: inline-block; width: 7px; height: 7px; background: #9aa; border-radius: 50%; margin: 0 2px; animation: blink 1.2s infinite; }
+    body { display: flex; flex-direction: column; background: #efeae2; padding-bottom: 0 !important; }
+    .chat-top { flex: 0 0 auto; background: var(--navy); color: #fff; padding: 12px 16px; }
+    .chat-top .in { max-width: 760px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+    .chat-top h1 { font-size: 1.1rem; margin: 0; font-weight: 800; }
+    .chat-top .sub { font-size: .8rem; color: #cbd5e1; display: flex; align-items: center; gap: 6px; }
+    #chat { flex: 1 1 auto; overflow-y: auto; padding: 16px; max-width: 760px; width: 100%; margin: 0 auto; }
+    .msg { max-width: 82%; padding: 10px 14px; border-radius: 14px; margin: 8px 0; white-space: pre-wrap; word-wrap: break-word; box-shadow: 0 1px 1px rgba(0,0,0,.06); }
+    .msg.bot { background: #fff; color: #0f172a; border-top-left-radius: 4px; }
+    .msg.user { background: #d9fdd3; color: #0f172a; margin-left: auto; border-top-right-radius: 4px; }
+    .msg.sys { background: var(--green-bg); color: var(--green-2); border: 1px solid var(--green-line); margin: 12px auto; text-align: center; font-weight: 700; }
+    .msg.sys .i { color: var(--green); }
+    .typing span { display: inline-block; width: 7px; height: 7px; background: #94a3b8; border-radius: 50%; margin: 0 2px; animation: blink 1.2s infinite; }
     .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
     @keyframes blink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
-    .quick { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 12px 8px; max-width: 720px; width: 100%; margin: 0 auto; }
-    .quick button { background: #fff; color: var(--accent-dark); border: 1px solid #cfe3d6; border-radius: 999px; font-size: .85rem; padding: 6px 12px; }
-    #resumen { flex: 0 0 auto; background: #fff; border-top: 1px solid var(--line); padding: 10px 12px; }
-    #resumen .in { max-width: 720px; margin: 0 auto; }
-    #resumen .items { font-size: .88rem; color: var(--muted); }
-    #resumen .tot { font-weight: 700; font-size: 1.05rem; }
-    form { flex: 0 0 auto; display: flex; gap: 8px; padding: 8px 12px 12px; background: #f0f0f0; }
-    form .in { display: flex; gap: 8px; max-width: 720px; width: 100%; margin: 0 auto; }
-    form input { border-radius: 999px; padding: 12px 16px; }
-    form button { border-radius: 999px; padding: 0 18px; }
-    .menu-list { margin: 4px 0 0; padding-left: 16px; }
+    .quick { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px 10px; max-width: 760px; width: 100%; margin: 0 auto; }
+    .quick button { background: #fff; color: var(--orange-2); border: 1px solid #fed7aa; border-radius: 999px; font-size: .86rem; padding: 7px 13px; }
+    #resumen { flex: 0 0 auto; background: var(--card); border-top: 1px solid var(--line); padding: 12px 16px; }
+    #resumen .in { max-width: 760px; margin: 0 auto; }
+    #resumen .items { font-size: .86rem; color: var(--muted); }
+    #resumen .tot { font-weight: 800; font-size: 1.05rem; display: flex; gap: 8px; align-items: center; }
+    #resumen .tot .mono { color: var(--orange-2); }
+    #form { flex: 0 0 auto; padding: 10px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); }
+    #form .in { display: flex; gap: 8px; max-width: 760px; width: 100%; margin: 0 auto; }
+    #form input { border-radius: 999px; padding: 13px 18px; }
+    #form button { border-radius: 999px; padding: 0 16px; }
+    .menu-list { margin: 6px 0 0; padding-left: 0; list-style: none; }
+    .menu-list li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px dashed #e2e8f0; }
+    .menu-list .mono { font-size: .88rem; }
+    @media (max-width: 760px) {
+      body { background: #0b1220; }
+      .msg.bot { background: #1e293b; color: #e8edf5; }
+      .msg.user { background: #14532d; color: #ecfdf5; }
+      .quick button { background: #121b2e; border-color: #7c2d12; color: #fb923c; }
+      .menu-list li { border-color: #334155; }
+      #resumen .tot .mono { color: #fb923c; }
+    }
   </style>
 </head>
 <body>
-  <header>
-    <div>
-      <h1 id="negocio">Cargando…</h1>
-      <div class="sub">🤖 Asistente de pedidos · responde al instante, las 24 hs</div>
+  <header class="chat-top">
+    <div class="in">
+      <span class="logo" data-icon="zap"></span>
+      <div>
+        <h1 id="negocio">Cargando…</h1>
+        <div class="sub"><i class="dot"></i>Asistente de pedidos · responde al instante, las 24 hs</div>
+      </div>
     </div>
   </header>
 
   <div id="chat"></div>
   <div class="quick" id="quick">
-    <button data-q="menu">📋 Ver el menú</button>
-    <button data-q="¿Hacen envíos? ¿Cuánto sale?">🛵 ¿Hacen envíos?</button>
-    <button data-q="¿Qué horarios tienen?">🕐 Horarios</button>
-    <button data-q="¿Cómo puedo pagar?">💳 Formas de pago</button>
+    <button data-q="menu" type="button"><span data-icon="utensils"></span>Ver el menú</button>
+    <button data-q="¿Hacen envíos? ¿Cuánto sale?" type="button"><span data-icon="bike"></span>¿Hacen envíos?</button>
+    <button data-q="¿Qué horarios tienen?" type="button"><span data-icon="clock"></span>Horarios</button>
+    <button data-q="¿Cómo puedo pagar?" type="button"><span data-icon="card"></span>Formas de pago</button>
   </div>
 
   <div id="resumen" class="hidden">
@@ -55,7 +73,7 @@
           <div class="items" id="rItems"></div>
           <div class="items" id="rFalta"></div>
         </div>
-        <button id="btnConfirmar" disabled>Confirmar pedido</button>
+        <button id="btnConfirmar" class="btn-primary" disabled type="button"><span data-icon="check"></span>Confirmar pedido</button>
       </div>
     </div>
   </div>
@@ -63,12 +81,13 @@
   <form id="form" autocomplete="off">
     <div class="in">
       <input id="input" placeholder="Escribí tu pedido o consulta…" maxlength="1000">
-      <button id="btnEnviar" type="submit">Enviar</button>
+      <button id="btnEnviar" class="btn-primary" type="submit" aria-label="Enviar"><span data-icon="send"></span></button>
     </div>
   </form>
 
   <script src="common.js"></script>
   <script>
+    hydrateIcons();
     let config = null;
     let mensajes = [];   // historial que se manda a la IA
     let estado = null;   // último { pedido, faltantes, listo }
@@ -87,7 +106,7 @@
       const p = estado?.pedido;
       if (!p || !p.items.length) { $('#resumen').classList.add('hidden'); return; }
       $('#resumen').classList.remove('hidden');
-      $('#rTotal').textContent = 'Tu pedido · ' + money(p.total) + (p.envio ? ' (envío incl.)' : '');
+      $('#rTotal').innerHTML = icon('list') + 'Tu pedido · <span class="mono">' + money(p.total) + '</span>' + (p.envio ? ' <span class="muted">(envío incl.)</span>' : '');
       $('#rItems').textContent = p.items.map((i) => `${i.cantidad} × ${i.producto}`).join(', ');
       $('#rFalta').textContent = estado.listo ? '' : 'Falta: ' + estado.faltantes.join(', ');
       $('#btnConfirmar').disabled = !estado.listo;
@@ -112,7 +131,7 @@
       } catch (e) {
         typing.remove();
         mensajes.pop(); // no guardar el mensaje que falló, así se puede reintentar
-        burbuja('⚠️ ' + e.message, 'bot');
+        burbuja('No pude responder: ' + e.message, 'bot');
         $('#input').value = texto;
       } finally {
         enviando = false;
@@ -133,7 +152,7 @@
       if (!q) return;
       if (q === 'menu') {
         // El menú se muestra directo, sin gastar una llamada a la IA.
-        burbuja('', 'bot', '<b>Nuestro menú</b><ul class="menu-list">' + config.menu.map((m) => `<li>${esc(m.producto)} — ${money(m.precio)}</li>`).join('') + `</ul>Envío: ${money(config.envio)}<br>¿Qué te gustaría pedir?`);
+        burbuja('', 'bot', '<b>Nuestro menú</b><ul class="menu-list">' + config.menu.map((m) => `<li><span>${esc(m.producto)}</span><span class="mono">${money(m.precio)}</span></li>`).join('') + `<li><span>Envío</span><span class="mono">${money(config.envio)}</span></li></ul><div style="margin-top:6px">¿Qué te gustaría pedir?</div>`);
         return;
       }
       enviar(q);
@@ -154,16 +173,16 @@
             texto_original: mensajes.map((m) => (m.role === 'user' ? 'Cliente: ' : 'Asistente: ') + m.content).join('\n')
           }
         });
-        burbuja(`✅ ¡Pedido #${guardado.id} confirmado! Total ${money(guardado.total)}.\nYa le llegó al local. Te avisamos por WhatsApp cuando esté listo.`, 'sys');
+        burbuja('', 'sys', `${icon('checkCircle')} ¡Pedido #${guardado.id} confirmado! Total ${money(guardado.total)}.<br>Ya le llegó al local. Te avisamos por WhatsApp cuando esté listo.`);
         mensajes = [];
         estado = null;
         mostrarResumen();
         $('#quick').classList.remove('hidden');
       } catch (e) {
-        burbuja('⚠️ No se pudo confirmar: ' + e.message, 'bot');
+        burbuja('No se pudo confirmar: ' + e.message, 'bot');
         btn.disabled = false;
       } finally {
-        btn.textContent = 'Confirmar pedido';
+        btn.innerHTML = icon('check') + 'Confirmar pedido';
       }
     });
 
@@ -172,7 +191,7 @@
       $('#negocio').textContent = c.negocio;
       document.title = 'Pedí en ' + c.negocio;
       burbuja(`¡Hola! 👋 Soy el asistente de ${c.negocio}. Contame qué querés pedir o preguntame lo que necesites.`, 'bot');
-    }).catch((e) => burbuja('⚠️ ' + e.message, 'bot'));
+    }).catch((e) => burbuja('No hay conexión: ' + e.message, 'bot'));
   </script>
 </body>
 </html>

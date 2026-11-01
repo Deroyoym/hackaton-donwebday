@@ -14,35 +14,52 @@ Lucas: me lo mandan?`
 
 let config = null;
 let pedido = null;
-
-async function init() {
-  try {
-    config = await api('/api/config');
-    $('#negocio').textContent = '· ' + config.negocio;
-    $('#agregarProd').innerHTML = config.menu.map((m, i) => `<option value="${i}">${esc(m.producto)} (${money(m.precio)})</option>`).join('');
-  } catch (e) { showError(e.message); }
-}
+let imagen = ''; // captura comprimida (data URL)
 
 function showError(msg) {
   $('#error').textContent = msg;
   $('#error').classList.toggle('hidden', !msg);
 }
 
+async function init() {
+  try {
+    config = await api('/api/config');
+    $('#agregarProd').innerHTML = config.menu.map((m, i) => `<option value="${i}">${esc(m.producto)} · ${money(m.precio)}</option>`).join('');
+  } catch (e) { showError(e.message); }
+}
+
+// ---------- Texto y ejemplos ----------
+function contarCaracteres() {
+  $('#contador').textContent = $('#texto').value.length + ' caracteres';
+}
+$('#texto').addEventListener("input", contarCaracteres);
+
 document.querySelectorAll('[data-ej]').forEach((b) => b.addEventListener('click', () => {
   $('#texto').value = EJEMPLOS[b.dataset.ej];
+  contarCaracteres();
   $('#texto').focus();
 }));
 
-// ---------- Captura de pantalla ----------
-let imagen = ''; // data URL comprimida
+$('#btnLimpiar').addEventListener('click', () => {
+  setCaptura('');
+  $('#texto').value = '';
+  contarCaracteres();
+  pedido = null;
+  $('#resultado').classList.add('hidden');
+  $('#vacio').classList.remove('hidden');
+  $('#iaTiempo').classList.add('hidden');
+  $('#paso').textContent = 'Paso 1 de 2';
+  showError('');
+});
 
+// ---------- Captura de pantalla ----------
 function comprimirImagen(file, max = 1600) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      // Achicamos hasta que pese < ~800 KB (el servidor corta pedidos de más de 1 MB).
+      // Achicamos hasta que pese < ~800 KB para que suba rápido.
       let lado = max, calidad = 0.85, out = '';
       for (let i = 0; i < 6; i++) {
         const k = Math.min(1, lado / Math.max(img.width, img.height));
@@ -75,12 +92,12 @@ $('#fileCaptura').addEventListener('change', async (e) => {
   try {
     setCaptura(await comprimirImagen(f));
     showError('');
-    $('#btnProcesar').click(); // un toque: subís la captura y ya se procesa
+    procesar(); // un toque: subís la captura y ya se procesa
   } catch (err) { showError(err.message); }
 });
 $('#btnQuitarCaptura').addEventListener('click', () => setCaptura(''));
 
-// Pegar una captura con Ctrl+V (útil en la compu con WhatsApp Web)
+// Pegar una captura con Ctrl+V (WhatsApp Web)
 document.addEventListener('paste', async (e) => {
   const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'));
   if (!item) return;
@@ -88,75 +105,80 @@ document.addEventListener('paste', async (e) => {
   try { setCaptura(await comprimirImagen(item.getAsFile())); } catch (err) { showError(err.message); }
 });
 
-// ---------- Dictado por voz (llamadas) ----------
+// ---------- Dictado por voz ----------
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let rec = null;
-if (SR) {
-  $('#btnDictar').classList.remove('hidden');
-  $('#btnDictar').addEventListener('click', () => {
-    if (rec) { rec.stop(); return; }
-    // Los navegadores solo dejan usar el micrófono en sitios https (o localhost).
-    if (!window.isSecureContext) {
-      const https = 'https://' + location.host + location.pathname;
-      $('#error').innerHTML = `El dictado necesita una conexión segura. <a href="${https}">Abrí la versión https</a>.`;
-      $('#error').classList.remove('hidden');
-      return;
-    }
-    rec = new SR();
-    rec.lang = 'es-AR';
-    rec.continuous = true;
-    rec.interimResults = false;
-    const base = $('#texto').value;
-    let dicho = '';
-    rec.onresult = (ev) => {
-      for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        if (ev.results[i].isFinal) dicho += ev.results[i][0].transcript + ' ';
-      }
-      $('#texto').value = (base ? base + '\n' : '') + dicho.trim();
-    };
-    rec.onerror = (ev) => showError(ev.error === 'not-allowed' ? 'Permití el uso del micrófono para dictar.' : 'No se pudo usar el micrófono (' + ev.error + ').');
-    rec.onend = () => {
-      rec = null;
-      $('#btnDictar').textContent = '🎤 Dictar llamada';
-      $('#btnDictar').classList.add('sec');
-    };
-    rec.start();
-    $('#btnDictar').textContent = '⏹ Terminar dictado';
-    $('#btnDictar').classList.remove('sec');
-  });
+
+function estadoDictado(grabando) {
+  $('#btnDictar').classList.toggle('recording', grabando);
+  $('#dictarIc').className = 'ic ' + (grabando ? 'orange' : 'dark');
+  $('#dictarIc').innerHTML = icon(grabando ? 'stop' : 'mic');
+  $('#dictarTit').textContent = grabando ? 'Escuchando… tocá para terminar' : 'Dictar llamada en vivo';
+  $('#dictarSub').textContent = grabando ? 'Hablá normal, se va escribiendo' : 'Hablá y se escribe solo';
 }
 
-$('#btnLimpiar').addEventListener('click', () => {
-  setCaptura('');
-  $('#texto').value = '';
-  $('#resultado').classList.add('hidden');
+$('#btnDictar').addEventListener('click', () => {
+  if (rec) { rec.stop(); return; }
+  if (!SR) return showError('Tu navegador no permite dictado. Probá con Chrome.');
+  // Los navegadores solo dejan usar el micrófono en sitios https (o localhost).
+  if (!window.isSecureContext) {
+    const https = 'https://' + location.host + location.pathname;
+    $('#error').innerHTML = `El dictado necesita una conexión segura. <a href="${https}">Abrí la versión https</a>.`;
+    $('#error').classList.remove('hidden');
+    return;
+  }
+  rec = new SR();
+  rec.lang = 'es-AR';
+  rec.continuous = true;
+  rec.interimResults = false;
+  const base = $('#texto').value;
+  let dicho = '';
+  rec.onresult = (ev) => {
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      if (ev.results[i].isFinal) dicho += ev.results[i][0].transcript + ' ';
+    }
+    $('#texto').value = (base ? base + '\n' : '') + dicho.trim();
+    contarCaracteres();
+  };
+  rec.onerror = (ev) => showError(ev.error === 'not-allowed' ? 'Permití el uso del micrófono para dictar.' : 'No se pudo usar el micrófono (' + ev.error + ').');
+  rec.onend = () => { rec = null; estadoDictado(false); };
+  rec.start();
   showError('');
+  estadoDictado(true);
 });
 
-$('#btnProcesar').addEventListener('click', async () => {
+// ---------- Procesar con IA ----------
+async function procesar() {
   const texto = $('#texto').value.trim();
   if (!texto && !imagen) return showError('Subí una captura, dictá o pegá el mensaje del cliente.');
   if (rec) rec.stop();
   showError('');
   const btn = $('#btnProcesar');
   btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span>${imagen ? 'Leyendo la captura…' : 'Leyendo el pedido…'}`;
+  btn.innerHTML = `<span class="spinner"></span>${imagen ? 'Leyendo la captura…' : 'Interpretando…'}`;
+  const t0 = performance.now();
   try {
     pedido = await api('/api/procesar', { method: 'POST', body: { texto, imagen } });
     pedido.texto_original = texto || '(captura de pantalla)';
     pedido.origen = imagen ? 'captura' : 'manual';
+    $('#iaTiempo').textContent = 'IA ' + ((performance.now() - t0) / 1000).toFixed(1) + 's';
+    $('#iaTiempo').classList.remove('hidden');
     render();
+    $('#vacio').classList.add('hidden');
     $('#resultado').classList.remove('hidden');
     $('#guardado').classList.add('hidden');
-    $('#resultado').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('#paso').textContent = 'Paso 2 de 2 · revisá y confirmá';
+    if (window.innerWidth <= 1000) $('.side').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (e) {
     showError(e.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Procesar con IA';
+    btn.innerHTML = icon('zap') + 'Procesar con IA';
   }
-});
+}
+$('#btnProcesar').addEventListener('click', procesar);
 
+// ---------- Render de la comanda ----------
 function render() {
   $('#cNombre').value = pedido.cliente.nombre;
   $('#cTel').value = pedido.cliente.telefono;
@@ -165,10 +187,15 @@ function render() {
   $('#eDir').value = pedido.entrega.direccion;
   $('#pago').value = pedido.pago;
   $('#respuesta').value = pedido.respuesta_sugerida;
+  $('#hora').textContent = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 
   let html = '';
-  if (pedido.faltantes.length) html += `<div class="muted">Falta preguntar:</div><div class="chips">${pedido.faltantes.map((f) => `<span class="chip warn">${esc(f)}</span>`).join('')}</div>`;
-  if (pedido.no_reconocidos.length) html += `<div class="muted">No está en el menú:</div><div class="chips">${pedido.no_reconocidos.map((f) => `<span class="chip bad">${esc(f)}</span>`).join('')}</div>`;
+  if (pedido.faltantes.length) {
+    html += `<div class="alert warn">${icon('alert')}<div><b>Falta preguntarle al cliente</b><ul>${pedido.faltantes.map((f) => `<li>${esc(f)}</li>`).join('')}</ul></div></div>`;
+  }
+  if (pedido.no_reconocidos.length) {
+    html += `<div class="alert bad">${icon('x')}<div><b>No está en tu menú</b><ul>${pedido.no_reconocidos.map((f) => `<li>${esc(f)}</li>`).join('')}</ul></div></div>`;
+  }
   $('#alertas').innerHTML = html;
   renderItems();
 }
@@ -176,14 +203,17 @@ function render() {
 function renderItems() {
   $('#items').innerHTML = pedido.items.length
     ? pedido.items.map((it, i) => `
-      <tr>
-        <td>${esc(it.producto)}${it.nota ? `<div class="muted">${esc(it.nota)}</div>` : ''}</td>
-        <td class="num"><input type="number" min="1" value="${it.cantidad}" data-i="${i}" style="width:64px;text-align:right"></td>
-        <td class="num">${money(it.precio_unit)}</td>
-        <td class="num">${money(it.cantidad * it.precio_unit)}</td>
-        <td class="num"><button class="sec small" data-del="${i}" title="Quitar">✕</button></td>
-      </tr>`).join('')
-    : '<tr><td colspan="5" class="muted">No se detectaron productos del menú.</td></tr>';
+      <div class="item">
+        <div class="qty">
+          <button type="button" data-menos="${i}" aria-label="Restar">−</button>
+          <span>${it.cantidad}x</span>
+          <button type="button" data-mas="${i}" aria-label="Sumar">+</button>
+        </div>
+        <div class="name"><b>${esc(it.producto)}</b><small>${it.nota ? esc(it.nota) : money(it.precio_unit) + ' c/u'}</small></div>
+        <div class="price">${money(it.cantidad * it.precio_unit)}</div>
+        <button type="button" class="del" data-del="${i}" aria-label="Quitar">${icon('trash')}</button>
+      </div>`).join('')
+    : `<div class="alert warn">${icon('info')}<div>No se detectaron productos del menú. Agregalos abajo.</div></div>`;
   renderTotales();
 }
 
@@ -191,7 +221,13 @@ function renderTotales() {
   const tipo = $('#eTipo').value;
   const sub = pedido.items.reduce((s, i) => s + i.cantidad * i.precio_unit, 0);
   const envio = tipo === 'envio' ? Number(config.envio) || 0 : 0;
-  $('#totales').innerHTML = (envio ? `<div class="muted" style="font-size:.9rem;font-weight:400">Subtotal ${money(sub)} + envío ${money(envio)}</div>` : '') + `Total ${money(sub + envio)}`;
+  $('#tSub').textContent = money(sub);
+  $('#tEnvio').innerHTML = tipo === 'envio'
+    ? `<span class="mono">${money(envio)}</span>`
+    : `<span class="pill gray">${tipo === 'retiro' ? 'Sin cargo (retira)' : 'A definir'}</span>`;
+  $('#tTotal').textContent = money(sub + envio);
+  $('#eIc').innerHTML = icon(tipo === 'envio' ? 'bike' : 'store');
+  $('#dirWrap').classList.toggle('hidden', tipo === 'retiro');
   updateWa();
 }
 
@@ -199,18 +235,16 @@ function updateWa() {
   $('#btnWa').href = waLink($('#cTel').value, $('#respuesta').value);
 }
 
-$('#items').addEventListener('input', (e) => {
-  if (e.target.dataset.i === undefined) return;
-  pedido.items[e.target.dataset.i].cantidad = Math.max(1, parseInt(e.target.value) || 1);
-  const row = e.target.closest('tr');
-  const it = pedido.items[e.target.dataset.i];
-  row.children[3].textContent = money(it.cantidad * it.precio_unit);
-  renderTotales();
-});
 $('#items').addEventListener('click', (e) => {
-  const i = e.target.dataset.del;
-  if (i === undefined) return;
-  pedido.items.splice(Number(i), 1);
+  const b = e.target.closest('button');
+  if (!b) return;
+  const { mas, menos, del } = b.dataset;
+  if (mas !== undefined) pedido.items[mas].cantidad++;
+  else if (menos !== undefined) {
+    if (pedido.items[menos].cantidad > 1) pedido.items[menos].cantidad--;
+    else pedido.items.splice(Number(menos), 1);
+  } else if (del !== undefined) pedido.items.splice(Number(del), 1);
+  else return;
   renderItems();
 });
 $('#btnAgregar').addEventListener('click', () => {
@@ -228,17 +262,18 @@ $('#cTel').addEventListener('input', updateWa);
 $('#btnCopiar').addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText($('#respuesta').value);
-    $('#btnCopiar').textContent = '¡Copiado!';
   } catch {
     $('#respuesta').select();
     document.execCommand('copy');
-    $('#btnCopiar').textContent = '¡Copiado!';
   }
-  setTimeout(() => ($('#btnCopiar').textContent = 'Copiar'), 1500);
+  $('#btnCopiar span:last-child').textContent = '¡Copiado!';
+  setTimeout(() => ($('#btnCopiar span:last-child').textContent = 'Copiar'), 1500);
 });
 
+// ---------- Guardar (mandar a cocina) ----------
 $('#btnGuardar').addEventListener('click', async () => {
   const btn = $('#btnGuardar');
+  if (!pedido.items.length) return showError('La comanda no tiene productos.');
   btn.disabled = true;
   try {
     const p = await api('/api/pedidos', {
@@ -253,15 +288,16 @@ $('#btnGuardar').addEventListener('click', async () => {
         texto_original: pedido.texto_original
       }
     });
-    $('#guardado').innerHTML = `Pedido #${p.id} guardado (${money(p.total)}). <a href="/panel.html">Ver panel</a>`;
+    $('#guardado').innerHTML = `${icon('checkCircle')} Comanda <b class="mono">#${p.id}</b> enviada a cocina (${money(p.total)}). <a href="/panel.html">Ver comandas</a>`;
     $('#guardado').classList.remove('hidden');
+    actualizarContador();
   } catch (e) {
     $('#guardado').classList.add('hidden');
     showError(e.message);
-    $('#error').scrollIntoView({ behavior: 'smooth' });
   } finally {
     btn.disabled = false;
   }
 });
+
 
 init();

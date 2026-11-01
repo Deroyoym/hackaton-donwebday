@@ -3,63 +3,63 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Panel de pedidos</title>
+  <meta name="theme-color" content="#0f172a">
+  <title>Comandas</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <h1>Pedido Express <span id="negocio"></span></h1>
-    <nav>
-      <a href="/">Nuevo pedido</a>
-      <a href="/panel.html" class="active">Panel</a>
-      <a href="/config.html">Menú</a>
-    </nav>
-  </header>
   <main>
-    <section class="card" id="linkCard">
-      <div class="row" style="align-items:flex-start;flex-wrap:nowrap">
-        <img id="qr" alt="QR del chat de pedidos" width="96" height="96" style="border-radius:8px;flex:0 0 auto">
-        <div style="min-width:0">
-          <h2 style="margin-bottom:4px">🤖 Tus clientes piden solos</h2>
-          <div class="muted">Poné este link en tu respuesta automática de WhatsApp, en Instagram o imprimí el QR. Los pedidos caen acá solos.</div>
-          <div class="row" style="margin-top:8px">
-            <button id="btnCopiarLink" class="sec small">Copiar link</button>
-            <a id="btnCompartir" class="btn sec small" style="padding:6px 10px;font-size:.85rem" target="_blank" rel="noopener">Compartir por WhatsApp</a>
-            <a href="/pedir.html" target="_blank" class="btn small" style="padding:6px 10px;font-size:.85rem">Probar chat ↗</a>
+    <section class="card">
+      <div class="link-card">
+        <img id="qr" alt="QR del chat de pedidos" width="104" height="104">
+        <div style="min-width:0;flex:1">
+          <span class="tag">Autoatención 24 hs</span>
+          <h2 style="margin:10px 0 4px;font-size:1.25rem">Tus clientes piden solos</h2>
+          <div class="muted">Poné este link en la respuesta automática de WhatsApp, en Instagram o imprimí el QR para el mostrador. La IA atiende y las comandas caen acá.</div>
+          <div class="row" style="margin-top:12px">
+            <button id="btnCopiarLink" class="small" type="button"><span data-icon="link"></span><span>Copiar link</span></button>
+            <a id="btnCompartir" class="btn btn-wa small" target="_blank" rel="noopener"><span data-icon="send"></span>Compartir por WhatsApp</a>
+            <a href="/pedir.html" target="_blank" rel="noopener" class="btn btn-primary small"><span data-icon="external"></span>Probar chat</a>
           </div>
         </div>
       </div>
     </section>
+
     <div class="stats">
-      <div class="stat"><b id="sPend">0</b><span>Pendientes</span></div>
-      <div class="stat"><b id="sCant">0</b><span>Pedidos hoy</span></div>
-      <div class="stat"><b id="sTotal">$0</b><span>Vendido hoy</span></div>
+      <div class="stat"><span class="ic" style="background:var(--orange-bg);color:var(--orange-2)" data-icon="bell"></span><div><b id="sPend">0</b><span>Pendientes</span></div></div>
+      <div class="stat"><span class="ic" style="background:#eff6ff;color:#2563eb" data-icon="list"></span><div><b id="sCant">0</b><span>Pedidos hoy</span></div></div>
+      <div class="stat"><span class="ic" style="background:var(--green-bg);color:var(--green-2)" data-icon="dollar"></span><div><b id="sTotal">$0</b><span>Vendido hoy</span></div></div>
     </div>
-    <div class="row" style="margin-bottom:12px">
-      <label style="margin:0">Mostrar:</label>
+
+    <div class="row spread" style="margin-bottom:14px">
+      <h2 style="margin:0">Comandas</h2>
       <select id="filtro" style="width:auto">
-        <option value="activos">Activos</option>
-        <option value="todos">Todos</option>
+        <option value="activos">Activas</option>
+        <option value="todos">Todas</option>
       </select>
     </div>
     <div id="error" class="error hidden"></div>
-    <div id="lista"><p class="muted">Cargando…</p></div>
+    <div id="lista" class="orders"><p class="muted">Cargando…</p></div>
   </main>
   <script src="common.js"></script>
   <script>
+    renderShell('panel');
+    hydrateIcons();
+
     const SIGUIENTE = { nuevo: 'preparando', preparando: 'listo', listo: 'entregado' };
-    const LABEL = { preparando: 'Empezar a preparar', listo: 'Marcar listo', entregado: 'Entregado' };
-    const ORIGEN = { chat: '🤖 Chat web', captura: '📷 Captura', manual: '✍️ Manual' };
+    const LABEL = { preparando: ['chef', 'Empezar a preparar'], listo: ['check', 'Marcar listo'], entregado: ['checkCheck', 'Entregado'] };
+    const ORIGEN = { chat: ['bot', 'Chat web'], captura: ['camera', 'Captura'], manual: ['pencil', 'Manual'] };
     let pedidos = [];
     let ultimoId = null;
+    let nuevos = new Set();
 
     const linkClientes = location.origin + '/pedir.html';
-    $('#qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=192x192&margin=6&data=' + encodeURIComponent(linkClientes);
+    $('#qr').src = 'https://api.qrserver.com/v1/create-qr-code/?size=208x208&margin=4&data=' + encodeURIComponent(linkClientes);
     $('#qr').onerror = () => $('#qr').classList.add('hidden');
     $('#btnCopiarLink').addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(linkClientes); } catch { prompt('Copiá el link:', linkClientes); }
-      $('#btnCopiarLink').textContent = '¡Copiado!';
-      setTimeout(() => ($('#btnCopiarLink').textContent = 'Copiar link'), 1500);
+      $('#btnCopiarLink span:last-child').textContent = '¡Copiado!';
+      setTimeout(() => ($('#btnCopiarLink span:last-child').textContent = 'Copiar link'), 1500);
     });
 
     // Aviso sonoro + título cuando entra un pedido nuevo
@@ -74,19 +74,24 @@
           o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.16);
         });
       } catch {}
-      document.title = `(${n}) ¡Pedido nuevo!`;
-      setTimeout(() => (document.title = 'Panel de pedidos'), 6000);
+      document.title = `(${n}) ¡Comanda nueva!`;
+      setTimeout(() => (document.title = 'Comandas'), 6000);
     }
 
     async function cargar() {
       try {
         const [cfg, ps] = await Promise.all([api('/api/config'), api('/api/pedidos')]);
-        $('#negocio').textContent = '· ' + cfg.negocio;
         $('#btnCompartir').href = 'https://wa.me/?text=' + encodeURIComponent(`¡Hola! Ahora podés hacer tu pedido en ${cfg.negocio} acá, te responde al toque 👉 ${linkClientes}`);
         const maxId = ps.reduce((m, p) => Math.max(m, p.id), 0);
-        if (ultimoId !== null && maxId > ultimoId) avisar(ps.filter((p) => p.id > ultimoId).length);
+        if (ultimoId !== null && maxId > ultimoId) {
+          const llegados = ps.filter((p) => p.id > ultimoId);
+          llegados.forEach((p) => nuevos.add(p.id));
+          avisar(llegados.length);
+          setTimeout(() => { nuevos.clear(); }, 4000);
+        }
         ultimoId = maxId;
         pedidos = ps;
+        actualizarContador(ps);
         $('#error').classList.add('hidden');
         render();
       } catch (e) {
@@ -104,38 +109,49 @@
 
       const lista = $('#filtro').value === 'todos' ? pedidos : pedidos.filter((p) => !['entregado', 'cancelado'].includes(p.estado));
       if (!lista.length) {
-        $('#lista').innerHTML = '<div class="card muted">No hay pedidos todavía. <a href="/">Cargá uno</a>.</div>';
+        $('#lista').innerHTML = `<div class="card empty" style="grid-column:1/-1">${icon('inbox')}<b>No hay comandas activas</b><a href="/">Cargá un pedido</a> o compartí el chat con tus clientes.</div>`;
         return;
       }
       $('#lista').innerHTML = lista.map((p) => {
         const hora = new Date(p.creado).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-        const entrega = p.entrega.tipo === 'envio' ? `🛵 Envío${p.entrega.direccion ? ' a ' + esc(p.entrega.direccion) : ''}` : p.entrega.tipo === 'retiro' ? '🏪 Retira' : 'Entrega sin definir';
+        const [oIc, oTxt] = ORIGEN[p.origen] || ORIGEN.manual;
+        const entrega = p.entrega.tipo === 'envio'
+          ? `<span class="pill orange">${icon('bike')}Envío${p.entrega.direccion ? ' · ' + esc(p.entrega.direccion) : ''}</span>`
+          : p.entrega.tipo === 'retiro' ? `<span class="pill gray">${icon('store')}Retira</span>` : `<span class="pill gray">${icon('info')}Entrega a definir</span>`;
         const sig = SIGUIENTE[p.estado];
         const aviso = `Hola${p.cliente.nombre ? ' ' + p.cliente.nombre : ''}! Tu pedido #${p.id} de ${money(p.total)} ya está listo${p.entrega.tipo === 'envio' ? ' y sale para tu casa 🛵' : ' para retirar 🙌'}`;
         return `
-        <div class="card pedido ${p.estado}">
-          <div class="row" style="justify-content:space-between">
-            <strong>#${p.id} · ${esc(p.cliente.nombre || 'Sin nombre')}</strong>
-            <span class="badge">${p.estado}</span>
+        <article class="order ${p.estado} ${nuevos.has(p.id) ? 'flash' : ''}">
+          <div class="order-h">
+            <div><span class="code">#${String(p.id).padStart(3, '0')}</span><b>${esc(p.cliente.nombre || 'Sin nombre')}</b></div>
+            <span class="estado ${p.estado}">${p.estado}</span>
           </div>
-          <div class="muted">${ORIGEN[p.origen] || ORIGEN.manual} · ${hora} · ${entrega}${p.entrega.horario ? ' · ' + esc(p.entrega.horario) : ''}${p.pago ? ' · ' + esc(p.pago) : ''}</div>
-          <ul class="items">${p.items.map((i) => `<li>${i.cantidad} × ${esc(i.producto)}${i.nota ? ` <span class="muted">(${esc(i.nota)})</span>` : ''}</li>`).join('')}</ul>
-          ${p.faltantes.length ? `<div class="chips">${p.faltantes.map((f) => `<span class="chip warn">${esc(f)}</span>`).join('')}</div>` : ''}
-          <div class="row" style="justify-content:space-between">
-            <strong>${money(p.total)}</strong>
-            <div class="row">
-              ${p.estado === 'listo' ? `<a class="btn sec small" style="padding:6px 10px;font-size:.85rem" target="_blank" rel="noopener" href="${waLink(p.cliente.telefono, aviso)}">Avisar por WhatsApp</a>` : ''}
-              ${['nuevo', 'preparando'].includes(p.estado) ? `<button class="sec small" data-id="${p.id}" data-estado="cancelado">Cancelar</button>` : ''}
-              ${sig ? `<button class="small" data-id="${p.id}" data-estado="${sig}">${LABEL[sig]}</button>` : ''}
+          <div class="order-b">
+            <div class="meta">
+              <span class="pill gray">${icon(oIc)}${oTxt}</span>
+              <span class="pill gray">${icon('clock')}${hora}${p.entrega.horario ? ' → ' + esc(p.entrega.horario) : ''}</span>
+              ${entrega}
+              ${p.pago ? `<span class="pill gray">${icon('card')}${esc(p.pago)}</span>` : ''}
+            </div>
+            <ul>${p.items.map((i) => `<li><span class="q">${i.cantidad}x</span><span>${esc(i.producto)}${i.nota ? ` <span class="muted">(${esc(i.nota)})</span>` : ''}</span></li>`).join('')}</ul>
+            ${p.faltantes.length ? `<div class="alert warn" style="margin-top:10px;padding:8px 10px">${icon('alert')}<div>Falta: ${p.faltantes.map(esc).join(', ')}</div></div>` : ''}
+          </div>
+          <div class="order-f">
+            <span class="tot">${money(p.total)}</span>
+            <div class="row" style="gap:6px">
+              ${p.estado === 'listo' ? `<a class="btn btn-wa small" target="_blank" rel="noopener" href="${waLink(p.cliente.telefono, aviso)}">${icon('send')}Avisar</a>` : ''}
+              ${['nuevo', 'preparando'].includes(p.estado) ? `<button class="small btn-ghost" data-id="${p.id}" data-estado="cancelado" title="Cancelar">${icon('x')}</button>` : ''}
+              ${sig ? `<button class="small ${sig === 'entregado' ? '' : 'btn-primary'}" data-id="${p.id}" data-estado="${sig}">${icon(LABEL[sig][0])}${LABEL[sig][1]}</button>` : ''}
             </div>
           </div>
-        </div>`;
+        </article>`;
       }).join('');
     }
 
     $('#lista').addEventListener('click', async (e) => {
       const b = e.target.closest('button[data-id]');
       if (!b) return;
+      if (b.dataset.estado === 'cancelado' && !confirm('¿Cancelar esta comanda?')) return;
       b.disabled = true;
       try {
         await api(`/api/pedidos/${b.dataset.id}`, { method: 'PATCH', body: { estado: b.dataset.estado } });
