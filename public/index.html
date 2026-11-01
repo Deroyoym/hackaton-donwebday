@@ -119,6 +119,8 @@
     .cw-res .tot .mono { color: var(--orange-2); }
     .cw-res .items { font-size: .82rem; color: var(--muted); }
     .cw-res button { width: 100%; margin-top: 8px; }
+    .cw-res button.pending { background: var(--soft); color: var(--muted); border: 1px dashed var(--line); box-shadow: none; font-weight: 600; cursor: pointer; }
+    .cw-res button.pending:hover { color: var(--text); }
     .cw-form { display: flex; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--card); }
     .cw-form input { border-radius: 999px; padding: 12px 16px; }
     .cw-form button { border-radius: 999px; padding: 0 14px; }
@@ -260,7 +262,7 @@
       <div class="tot" id="rTotal"></div>
       <div class="items" id="rItems"></div>
       <div class="items" id="rFalta"></div>
-      <button id="btnConfirmar" class="btn-primary" disabled type="button"><span data-icon="check"></span>Confirmar pedido</button>
+      <button id="btnConfirmar" class="pending" type="button"><span data-icon="pencil"></span>Completá tus datos para confirmar</button>
     </div>
     <form class="cw-form" id="form" autocomplete="off">
       <input id="input" placeholder="Escribí tu pedido o consulta…" maxlength="1000" aria-label="Mensaje">
@@ -346,7 +348,18 @@
       $('#rTotal').innerHTML = icon('list') + 'Tu pedido · <span class="mono">' + money(p.total) + '</span>' + (p.envio ? ' <span class="muted" style="font-weight:500">(envío incl.)</span>' : '');
       $('#rItems').textContent = p.items.map((i) => `${i.cantidad} × ${i.producto}`).join(', ');
       $('#rFalta').textContent = estado.listo ? '' : 'Falta: ' + estado.faltantes.join(', ');
-      $('#btnConfirmar').disabled = !estado.listo;
+      pintarConfirmar();
+    }
+
+    // Gris mientras falten datos (no parece "cargando"); naranja con el total cuando está listo.
+    function pintarConfirmar() {
+      const btn = $('#btnConfirmar');
+      btn.disabled = false;
+      btn.classList.toggle('btn-primary', !!estado?.listo);
+      btn.classList.toggle('pending', !estado?.listo);
+      btn.innerHTML = estado?.listo
+        ? icon('check') + 'Confirmar pedido · ' + money(estado.pedido.total)
+        : icon('pencil') + 'Completá tus datos para confirmar';
     }
 
     async function enviar(texto) {
@@ -396,8 +409,13 @@
     });
 
     $('#btnConfirmar').addEventListener('click', async () => {
-      if (!estado?.listo) return;
       const btn = $('#btnConfirmar');
+      if (!estado?.listo) {
+        // Explica qué falta en vez de no hacer nada.
+        burbuja(`Para confirmar me falta: ${estado?.faltantes?.join(', ') || 'algunos datos'}. Escribímelo acá abajo 👇`, 'bot');
+        $('#input').focus();
+        return;
+      }
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner"></span>Enviando…';
       const p = estado.pedido;
@@ -417,9 +435,7 @@
         $('#quick').classList.remove('hidden');
       } catch (e) {
         burbuja('No se pudo confirmar: ' + e.message, 'bot');
-        btn.disabled = false;
-      } finally {
-        btn.innerHTML = icon('check') + 'Confirmar pedido';
+        pintarConfirmar();
       }
     });
   </script>
