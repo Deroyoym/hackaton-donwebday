@@ -41,13 +41,21 @@ function comprimirImagen(file, max = 1600) {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      const k = Math.min(1, max / Math.max(img.width, img.height));
-      const c = document.createElement('canvas');
-      c.width = Math.round(img.width * k);
-      c.height = Math.round(img.height * k);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(url);
-      resolve(c.toDataURL('image/jpeg', 0.85));
+      // Achicamos hasta que pese < ~800 KB (el servidor corta pedidos de más de 1 MB).
+      let lado = max, calidad = 0.85, out = '';
+      for (let i = 0; i < 6; i++) {
+        const k = Math.min(1, lado / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * k);
+        c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        out = c.toDataURL('image/jpeg', calidad);
+        if (out.length < 800_000) break;
+        lado *= 0.8;
+        calidad = Math.max(0.6, calidad - 0.08);
+      }
+      resolve(out);
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen.')); };
     img.src = url;
